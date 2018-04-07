@@ -28,13 +28,24 @@ type Repo struct {
 
 func (db *DB) GetRepoById(id int) (*Repo, error) {
 	// FIXME Change to prepared statements!
-	row := db.sqldb.QueryRow("SELECT id, org_name, repo_name, last_retrieval FROM repos WHERE id = $1", id)
-
-	repo := &Repo{}
-	err := row.Scan(&repo.Id, &repo.OrgName, &repo.RepoName, &repo.LastRetrieval)
+	var repo Repo
+	err := db.sqldb.QueryRow("SELECT id, org_name, repo_name, last_retrieval FROM repos WHERE id = $1", id).Scan(&repo.Id, &repo.OrgName, &repo.RepoName, &repo.LastRetrieval)
 	if err != nil {
 		return nil, err
 	}
 
+	return &repo, nil
+}
+
+func (db *DB) InsertRepo(orgName string, repoName string) (*Repo, error) {
+	// FIXME Change to prepared statements!
+	var id int
+	zeroTime := time.Time{}
+	err := db.sqldb.QueryRow("INSERT INTO repos (org_name, repo_name, last_retrieval) VALUES ($1, $2, $3) RETURNING id", orgName, repoName, zeroTime).Scan(&id)
+	if err != nil {
+		return nil, err
+	}
+
+	repo := &Repo{Id: id, OrgName: orgName, RepoName: repoName, LastRetrieval: zeroTime}
 	return repo, nil
 }

@@ -28,9 +28,16 @@ func main() {
 	}
 
 	err = cfg.SetRepoLocation("/home/steve/programming/lftools/lfscanning/repos")
-	fmt.Println(err)
 
-	repo, err := db.GetRepoById(1)
+	var repo *database.Repo
+	repo, err = db.InsertRepo("swinslow", "spdx-spec")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	id := repo.Id
+
+	repo, err = db.GetRepoById(id)
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -1,0 +1,7 @@
+Items for further review
+
+- When inserting a new row using Exec, a Result is returned. Result includes a LastInsertId() function; however, PostgreSQL (through lib/pq) doesn't return the id through that function. It appears that the intended way to do this is to use INSERT with RETURNING id in the SQL statement. However, note that this requires calling it with QueryRow rather than Exec, and in general I gather QueryRow should only be used for SELECTs. To be determined whether using QueryRow for INSERTs leaks connections and/or causes other problems. 
+For further details see:
+https://github.com/lib/pq/issues/24
+https://github.com/lib/pq/issues/550
+http://go-database-sql.org/modifying.html ("...you should never use Query() like this.")
