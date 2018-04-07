@@ -7,14 +7,14 @@ import (
 	"time"
 )
 
-func (db *DB) CreateDBRepoTableIfNotExists() error {
+func (db *DB) createDBRepoTableIfNotExists() error {
 	_, err := db.sqldb.Exec(`
 		CREATE TABLE IF NOT EXISTS repos (
 			id SERIAL NOT NULL PRIMARY KEY,
 			org_name TEXT NOT NULL,
 			repo_name TEXT NOT NULL,
 			last_retrieval TIMESTAMP NOT NULL
-		);
+		)
 	`)
 	return err
 }
@@ -27,9 +27,13 @@ type Repo struct {
 }
 
 func (db *DB) GetRepoById(id int) (*Repo, error) {
-	// FIXME Change to prepared statements!
+	stmt, err := db.getStatement(stmtRepoGet)
+	if err != nil {
+		return nil, err
+	}
+
 	var repo Repo
-	err := db.sqldb.QueryRow("SELECT id, org_name, repo_name, last_retrieval FROM repos WHERE id = $1", id).Scan(&repo.Id, &repo.OrgName, &repo.RepoName, &repo.LastRetrieval)
+	err = stmt.QueryRow(id).Scan(&repo.Id, &repo.OrgName, &repo.RepoName, &repo.LastRetrieval)
 	if err != nil {
 		return nil, err
 	}
@@ -38,10 +42,14 @@ func (db *DB) GetRepoById(id int) (*Repo, error) {
 }
 
 func (db *DB) InsertRepo(orgName string, repoName string) (*Repo, error) {
-	// FIXME Change to prepared statements!
+	stmt, err := db.getStatement(stmtRepoInsert)
+	if err != nil {
+		return nil, err
+	}
+
 	var id int
 	zeroTime := time.Time{}
-	err := db.sqldb.QueryRow("INSERT INTO repos (org_name, repo_name, last_retrieval) VALUES ($1, $2, $3) RETURNING id", orgName, repoName, zeroTime).Scan(&id)
+	err = stmt.QueryRow(orgName, repoName, zeroTime).Scan(&id)
 	if err != nil {
 		return nil, err
 	}

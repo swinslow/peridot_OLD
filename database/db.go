@@ -13,6 +13,13 @@ import (
 
 type DB struct {
 	sqldb *sql.DB
+	stmts []*sql.Stmt
+}
+
+func InitDB() *DB {
+	var db DB
+	db.stmts = make([]*sql.Stmt, 1)
+	return &db
 }
 
 func (db *DB) PrepareDB(cfg *config.Config) error {
@@ -35,18 +42,24 @@ func (db *DB) PrepareDB(cfg *config.Config) error {
 
 	// we're good; set as database connect
 	db.sqldb = sqldb
+
+	// create tables if they don't already exist
+	err = db.createDBTablesIfNotExists()
+	if err != nil {
+		return err
+	}
+
+	// and prepare statements (must do this after ensuring tables exist)
+	err = db.prepareStatements()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (db *DB) CreateDBTablesIfNotExists() error {
-	if db == nil {
-		return errors.New("got nil *DB in CreateDBTablesIfNotExists")
-	}
-	if db.sqldb == nil {
-		return errors.New("got nil *sql.DB in CreateDBTablesIfNotExists")
-	}
-
-	err := db.CreateDBRepoTableIfNotExists()
+func (db *DB) createDBTablesIfNotExists() error {
+	err := db.createDBRepoTableIfNotExists()
 	if err != nil {
 		return err
 	}
