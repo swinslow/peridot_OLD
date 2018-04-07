@@ -14,13 +14,14 @@ func main() {
 	cfg := &config.Config{}
 	cfg.SetDBConnectString("steve", "", "lfscanning", false)
 
-	db, err := database.PrepareDB(cfg)
+	var db database.DB
+	err := db.PrepareDB(cfg)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	err = database.CreateDBTablesIfNotExists(db)
+	err = db.CreateDBTablesIfNotExists()
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -29,7 +30,7 @@ func main() {
 	err = cfg.SetRepoLocation("/home/steve/programming/lftools/lfscanning/repos")
 	fmt.Println(err)
 
-	repo, err := database.GetRepoById(db, 1)
+	repo, err := db.GetRepoById(1)
 	if err != nil {
 		fmt.Println(err)
 		return

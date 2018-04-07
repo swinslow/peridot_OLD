@@ -4,12 +4,11 @@
 package database
 
 import (
-	"database/sql"
 	"time"
 )
 
-func CreateDBRepoTableIfNotExists(db *sql.DB) error {
-	_, err := db.Exec(`
+func (db *DB) CreateDBRepoTableIfNotExists() error {
+	_, err := db.sqldb.Exec(`
 		CREATE TABLE IF NOT EXISTS repos (
 			id SERIAL NOT NULL PRIMARY KEY,
 			org_name TEXT NOT NULL,
@@ -27,9 +26,9 @@ type Repo struct {
 	LastRetrieval time.Time
 }
 
-func GetRepoById(db *sql.DB, id int) (*Repo, error) {
+func (db *DB) GetRepoById(id int) (*Repo, error) {
 	// FIXME Change to prepared statements!
-	row := db.QueryRow("SELECT id, org_name, repo_name, last_retrieval FROM repos WHERE id = $1", id)
+	row := db.sqldb.QueryRow("SELECT id, org_name, repo_name, last_retrieval FROM repos WHERE id = $1", id)
 
 	repo := &Repo{}
 	err := row.Scan(&repo.Id, &repo.OrgName, &repo.RepoName, &repo.LastRetrieval)

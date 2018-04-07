@@ -12,32 +12,41 @@ import (
 )
 
 type DB struct {
+	sqldb *sql.DB
 }
 
-func PrepareDB(cfg *config.Config) (*sql.DB, error) {
-	if cfg == nil || cfg.DBConnectString == "" {
-		return nil, errors.New("must pass config string")
+func (db *DB) PrepareDB(cfg *config.Config) error {
+	if db == nil {
+		return errors.New("must pass non-nil DB")
 	}
-	db, err := sql.Open("postgres", cfg.DBConnectString)
+	if cfg == nil || cfg.DBConnectString == "" {
+		return errors.New("must pass config string")
+	}
+	sqldb, err := sql.Open("postgres", cfg.DBConnectString)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// check that we can in fact connect
-	err = db.Ping()
+	err = sqldb.Ping()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return db, nil
+	// we're good; set as database connect
+	db.sqldb = sqldb
+	return nil
 }
 
-func CreateDBTablesIfNotExists(db *sql.DB) error {
+func (db *DB) CreateDBTablesIfNotExists() error {
 	if db == nil {
+		return errors.New("got nil *DB in CreateDBTablesIfNotExists")
+	}
+	if db.sqldb == nil {
 		return errors.New("got nil *sql.DB in CreateDBTablesIfNotExists")
 	}
 
-	err := CreateDBRepoTableIfNotExists(db)
+	err := db.CreateDBRepoTableIfNotExists()
 	if err != nil {
 		return err
 	}
