@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (db *DB) createDBRepoTableIfNotExists() error {
+func (db *DB) createDBReposTableIfNotExists() error {
 	_, err := db.sqldb.Exec(`
 		CREATE TABLE IF NOT EXISTS repos (
 			id SERIAL NOT NULL PRIMARY KEY,

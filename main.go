@@ -35,13 +35,13 @@ func main() {
 	var repo *database.Repo
 	var id int
 
-	// repo, err = db.InsertRepo("swinslow", "spdxLicenseManager")
+	// repo, err = db.InsertRepo("swinslow", "fabric")
 	// if err != nil {
 	// 	fmt.Println(err)
 	// 	return
 	// }
 	// id = repo.Id
-	id = 6
+	id = 9
 
 	repo, err = db.GetRepoById(id)
 	if err != nil {
@@ -55,10 +55,37 @@ func main() {
 	repoURL := rm.GetURLToRepo(repo)
 	fmt.Printf("URL to repo:  %s\n", repoURL)
 
-	err = rm.CloneRepo(repo)
+	// err = rm.CloneRepo(repo)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// } else {
+	// 	fmt.Printf("Cloned %s to %s\n", repoPath, repoURL)
+	// }
+
+	fmt.Println("Updating repo...")
+	err = rm.UpdateRepo(repo)
 	if err != nil {
 		fmt.Println(err)
-	} else {
-		fmt.Printf("Cloned %s to %s\n", repoPath, repoURL)
+		return
+	}
+
+	msg, err := rm.GetRepoLatestCommit(repo)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Printf("Latest commit message: %s\n", msg)
+
+	//rm.WalkAndPrintFiles(repo, "slm/commands/cmdEditCategory.py")
+
+	allPaths, err := rm.GetAllFilepaths(repo)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	dirPaths := database.ExtractDirsFromPaths(allPaths)
+	for i, dirPath := range dirPaths {
+		fmt.Printf("%d: %s\n", i, dirPath)
 	}
 }

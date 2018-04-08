@@ -48,6 +48,10 @@ const (
 	stmtRepoGet dbStatementVal = iota
 	stmtRepoInsert
 	stmtRepoUpdateLastRetrieval
+	stmtRepoFileGet
+	stmtRepoFileInsert
+	stmtRepoDirGet
+	stmtRepoDirInsert
 )
 
 // master prepare function
@@ -55,6 +59,14 @@ func (db *DB) prepareStatements() error {
 	var err error
 
 	err = db.prepareStatementsRepos()
+	if err != nil {
+		return err
+	}
+	err = db.prepareStatementsRepoFiles()
+	if err != nil {
+		return err
+	}
+	err = db.prepareStatementsRepoDirs()
 	if err != nil {
 		return err
 	}
@@ -90,6 +102,58 @@ func (db *DB) prepareStatementsRepos() error {
 		UPDATE repos
 		SET last_retrieval = $1
 		WHERE id = $2
+	`)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// table repofiles
+func (db *DB) prepareStatementsRepoFiles() error {
+	var err error
+
+	err = db.addStatement(stmtRepoFileGet, `
+		SELECT id, repo_id, dir_parent_id, nextfile_id, prevfile_id,
+		       path, hash_sha1
+		FROM repofiles
+		WHERE id = $1
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtRepoFileInsert, `
+		INSERT INTO repofiles (repo_id, dir_parent_id,
+			nextfile_id, prevfile_id, path, hash_sha1)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id
+	`)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// table repofiles
+func (db *DB) prepareStatementsRepoDirs() error {
+	var err error
+
+	err = db.addStatement(stmtRepoDirGet, `
+		SELECT id, repo_id, dir_parent_id, path
+		FROM repodirs
+		WHERE id = $1
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtRepoDirInsert, `
+		INSERT INTO repodirs (repo_id, dir_parent_id, path)
+		VALUES ($1, $2, $3)
+		RETURNING id
 	`)
 	if err != nil {
 		return err
