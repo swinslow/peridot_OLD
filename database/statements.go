@@ -47,6 +47,7 @@ type dbStatementVal int
 const (
 	stmtRepoGet dbStatementVal = iota
 	stmtRepoInsert
+	stmtRepoUpdateLastRetrieval
 )
 
 // master prepare function
@@ -80,6 +81,15 @@ func (db *DB) prepareStatementsRepos() error {
 		INSERT INTO repos (org_name, repo_name, last_retrieval)
 		VALUES ($1, $2, $3)
 		RETURNING id
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtRepoUpdateLastRetrieval, `
+		UPDATE repos
+		SET last_retrieval = $1
+		WHERE id = $2
 	`)
 	if err != nil {
 		return err

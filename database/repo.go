@@ -4,6 +4,8 @@
 package database
 
 import (
+	"errors"
+	"strconv"
 	"time"
 )
 
@@ -56,4 +58,30 @@ func (db *DB) InsertRepo(orgName string, repoName string) (*Repo, error) {
 
 	repo := &Repo{Id: id, OrgName: orgName, RepoName: repoName, LastRetrieval: zeroTime}
 	return repo, nil
+}
+
+func (db *DB) UpdateRepoLastRetrieval(repo *Repo, lr time.Time) error {
+	stmt, err := db.getStatement(stmtRepoUpdateLastRetrieval)
+	if err != nil {
+		return err
+	}
+
+	res, err := stmt.Exec(lr, repo.Id)
+	if err != nil {
+		return err
+	}
+
+	rowCount, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowCount != 1 {
+		return errors.New("UpdateRepoLastRetrieval for ID " + strconv.Itoa(repo.Id) +
+			" modified " + strconv.FormatInt(rowCount, 10) + " rows, should be 1")
+	}
+
+	// update in-memory copy of repo
+	repo.LastRetrieval = lr
+
+	return nil
 }
