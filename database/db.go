@@ -57,23 +57,3 @@ func (db *DB) PrepareDB(cfg *config.Config) error {
 
 	return nil
 }
-
-func (db *DB) createDBTablesIfNotExists() error {
-	var err error
-	err = db.createDBReposTableIfNotExists()
-	if err != nil {
-		return err
-	}
-
-	err = db.createDBRepoDirsTableIfNotExists()
-	if err != nil {
-		return err
-	}
-
-	err = db.createDBRepoFilesTableIfNotExists()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}

@@ -41,13 +41,41 @@ func (db *DB) addStatement(sv dbStatementVal, s string) error {
 	return nil
 }
 
+func (db *DB) createDBTablesIfNotExists() error {
+	var err error
+	err = db.createDBReposTableIfNotExists()
+	if err != nil {
+		return err
+	}
+
+	err = db.createDBRepoRetrievalsTableIfNotExists()
+	if err != nil {
+		return err
+	}
+
+	err = db.createDBRepoDirsTableIfNotExists()
+	if err != nil {
+		return err
+	}
+
+	err = db.createDBRepoFilesTableIfNotExists()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // statement type and enum
 type dbStatementVal int
 
 const (
 	stmtRepoGet dbStatementVal = iota
 	stmtRepoInsert
-	stmtRepoUpdateLastRetrieval
+	stmtRepoRetrievalGet
+	stmtRepoRetrievalGetLatest
+	stmtRepoRetrievalInsert
+	stmtRepoRetrievalUpdate
 	stmtRepoFileGet
 	stmtRepoFileInsert
 	stmtRepoDirGet
@@ -59,6 +87,10 @@ func (db *DB) prepareStatements() error {
 	var err error
 
 	err = db.prepareStatementsRepos()
+	if err != nil {
+		return err
+	}
+	err = db.prepareStatementsRepoRetrievals()
 	if err != nil {
 		return err
 	}
@@ -81,7 +113,7 @@ func (db *DB) prepareStatementsRepos() error {
 	var err error
 
 	err = db.addStatement(stmtRepoGet, `
-		SELECT id, org_name, repo_name, last_retrieval
+		SELECT id, org_name, repo_name
 		FROM repos
 		WHERE id = $1
 	`)
@@ -90,7 +122,43 @@ func (db *DB) prepareStatementsRepos() error {
 	}
 
 	err = db.addStatement(stmtRepoInsert, `
-		INSERT INTO repos (org_name, repo_name, last_retrieval)
+		INSERT INTO repos (org_name, repo_name)
+		VALUES ($1, $2)
+		RETURNING id
+	`)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// table reporetrievals
+func (db *DB) prepareStatementsRepoRetrievals() error {
+	var err error
+
+	err = db.addStatement(stmtRepoRetrievalGet, `
+		SELECT id, repo_id, last_retrieval, commit_hash
+		FROM reporetrievals
+		WHERE id = $1
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtRepoRetrievalGetLatest, `
+		SELECT id, repo_id, last_retrieval, commit_hash
+		FROM reporetrievals
+		WHERE repo_id = $1
+		ORDER BY last_retrieval DESC
+		LIMIT 1
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtRepoRetrievalInsert, `
+		INSERT INTO reporetrievals (repo_id, last_retrieval, commit_hash)
 		VALUES ($1, $2, $3)
 		RETURNING id
 	`)
@@ -98,10 +166,10 @@ func (db *DB) prepareStatementsRepos() error {
 		return err
 	}
 
-	err = db.addStatement(stmtRepoUpdateLastRetrieval, `
-		UPDATE repos
-		SET last_retrieval = $1
-		WHERE id = $2
+	err = db.addStatement(stmtRepoRetrievalUpdate, `
+		UPDATE reporetrievals
+		SET last_retrieval = $1, commit_hash = $2
+		WHERE id = $3
 	`)
 	if err != nil {
 		return err

@@ -12,7 +12,7 @@ import (
 
 	"golang.org/x/sys/unix"
 	"gopkg.in/src-d/go-git.v4"
-	git_obj "gopkg.in/src-d/go-git.v4/plumbing/object"
+	gitObject "gopkg.in/src-d/go-git.v4/plumbing/object"
 
 	"github.com/swinslow/lfscanning/config"
 	"github.com/swinslow/lfscanning/database"
@@ -83,22 +83,50 @@ func (rm *RepoManager) GetURLToRepo(repo *database.Repo) string {
 func (rm *RepoManager) CloneRepo(repo *database.Repo) error {
 	dstPath := rm.GetPathToRepo(repo)
 	srcURL := rm.GetURLToRepo(repo)
-	_, err := git.PlainClone(dstPath, false, &git.CloneOptions{
+	r, err := git.PlainClone(dstPath, false, &git.CloneOptions{
 		URL:               srcURL,
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 		Progress:          os.Stdout,
 	})
-
 	if err != nil {
 		return err
 	}
 
-	rm.db.UpdateRepoLastRetrieval(repo, time.Now())
+	// get HEAD reference
+	ref, err := r.Head()
+	if err != nil {
+		return err
+	}
+
+	// get commit history
+	ci, err := r.Log(&git.LogOptions{
+		From:  ref.Hash(),
+		Order: git.LogOrderCommitterTime,
+	})
+	if err != nil {
+		return err
+	}
+	defer ci.Close()
+
+	// get first commit from iter
+	commit, err := ci.Next()
+	if err != nil {
+		return err
+	}
+
+	// and insert time and hash for commit
+	// FIXME determine whether we need to do all this or can just use ref.Hash()
+	repoRet, err := rm.db.InsertRepoRetrieval(repo.Id, time.Now(), commit.Hash.String())
+	if err != nil {
+		return err
+	} else {
+		fmt.Printf("Inserted RepoRetrieval %#v\n", repoRet)
+	}
 
 	return nil
 }
 
-func (rm *RepoManager) GetRepoLatestCommit(repo *database.Repo) (*git_obj.Commit, error) {
+func (rm *RepoManager) GetRepoLatestCommit(repo *database.Repo) (*gitObject.Commit, error) {
 	repoPath := rm.GetPathToRepo(repo)
 	r, err := git.PlainOpen(repoPath)
 	if err != nil {
@@ -142,14 +170,48 @@ func (rm *RepoManager) UpdateRepo(repo *database.Repo) error {
 		return err
 	}
 
+	// pull an update
 	err = w.Pull(&git.PullOptions{RemoteName: "origin"})
 	if err != nil && err != git.NoErrAlreadyUpToDate {
 		return err
 	}
 
-	rm.db.UpdateRepoLastRetrieval(repo, time.Now())
+	// get HEAD reference
+	ref, err := r.Head()
+	if err != nil {
+		return err
+	}
 
-	return nil
+	// get commit history
+	ci, err := r.Log(&git.LogOptions{
+		From:  ref.Hash(),
+		Order: git.LogOrderCommitterTime,
+	})
+	if err != nil {
+		return err
+	}
+	defer ci.Close()
+
+	// get first commit from iter
+	commit, err := ci.Next()
+	if err != nil {
+		return err
+	}
+
+	// FIXME determine whether we need to do all this or can just use ref.Hash()
+
+	// get the most current RepoRetrieval so we can decide whether to
+	// update it (if commit is the same) or to insert a new one (otherwise)
+	repoRet, err := rm.db.GetRepoRetrievalLatest(repo.Id)
+	commitHash := commit.Hash.String()
+	if err != nil || commitHash != repoRet.CommitHash {
+		_, err = rm.db.InsertRepoRetrieval(repo.Id, time.Now(), commitHash)
+	} else {
+		err = rm.db.UpdateRepoRetrieval(repoRet, time.Now(), commitHash)
+	}
+
+	// return back whatever err (or nil) we got from the insert / update call
+	return err
 }
 
 func (rm *RepoManager) WalkAndPrintFiles(repo *database.Repo, path string) error {
@@ -178,7 +240,7 @@ func (rm *RepoManager) WalkAndPrintFiles(repo *database.Repo, path string) error
 	}
 
 	// walk through files
-	tree.Files().ForEach(func(f *git_obj.File) error {
+	tree.Files().ForEach(func(f *gitObject.File) error {
 		if f.Name == path {
 			fmt.Printf("===> ")
 		}
@@ -218,7 +280,7 @@ func (rm *RepoManager) GetAllFilepaths(repo *database.Repo) ([]string, error) {
 
 	// walk through files; 50 is arbitrary
 	filePaths := make([]string, 50)
-	tree.Files().ForEach(func(f *git_obj.File) error {
+	tree.Files().ForEach(func(f *gitObject.File) error {
 		filePaths = append(filePaths, f.Name)
 		return nil
 	})

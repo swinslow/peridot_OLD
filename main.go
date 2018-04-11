@@ -11,6 +11,14 @@ import (
 	"github.com/swinslow/lfscanning/repomanager"
 )
 
+func addNewRepo(db *database.DB, orgName string, repoName string) (*database.Repo, error) {
+	repo, err := db.InsertRepo(orgName, repoName)
+	if err != nil {
+		return nil, err
+	}
+	return repo, err
+}
+
 func main() {
 	var err error
 
@@ -33,41 +41,39 @@ func main() {
 	}
 
 	var repo *database.Repo
-	var id int
 
-	// repo, err = db.InsertRepo("swinslow", "fabric")
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// }
-	// id = repo.Id
-	id = 9
+	// ===== OPTION 1: add new repo
+	/*
+		repo, err = addNewRepo(db, "swinslow", "testrepo")
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		err = rm.CloneRepo(repo)
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Printf("Cloned %s to %s\n", rm.GetPathToRepo(repo), rm.GetURLToRepo(repo))
+		}
+	*/
+	//id := repo.Id
 
+	// ===== OPTION 2: retrieve existing repo and update it
+	id := 1
 	repo, err = db.GetRepoById(id)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	fmt.Printf("%#v\n", repo)
-
-	repoPath := rm.GetPathToRepo(repo)
-	fmt.Printf("Path to repo: %s\n", repoPath)
-	repoURL := rm.GetURLToRepo(repo)
-	fmt.Printf("URL to repo:  %s\n", repoURL)
-
-	// err = rm.CloneRepo(repo)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// } else {
-	// 	fmt.Printf("Cloned %s to %s\n", repoPath, repoURL)
-	// }
-
 	fmt.Println("Updating repo...")
 	err = rm.UpdateRepo(repo)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+
+	// ========== Now, do whatever actions we want
 
 	msg, err := rm.GetRepoLatestCommit(repo)
 	if err != nil {
