@@ -44,7 +44,7 @@ func main() {
 
 	// ===== OPTION 1: add new repo
 	/*
-		repo, err = addNewRepo(db, "swinslow", "testrepo")
+		repo, err = addNewRepo(db, "swinslow", "fabric")
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -56,11 +56,11 @@ func main() {
 			fmt.Printf("Cloned %s to %s\n", rm.GetPathToRepo(repo), rm.GetURLToRepo(repo))
 		}
 	*/
-	//id := repo.Id
+	// repoId := repo.Id
 
 	// ===== OPTION 2: retrieve existing repo and update it
-	id := 1
-	repo, err = db.GetRepoById(id)
+	repoId := 2
+	repo, err = db.GetRepoById(repoId)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -70,6 +70,11 @@ func main() {
 	err = rm.UpdateRepo(repo)
 	if err != nil {
 		fmt.Println(err)
+		return
+	}
+	repoRetrieval, err := db.GetRepoRetrievalLatest(repoId)
+	if err != nil {
+		fmt.Printf("Error getting repo retrieval: %v\n", err)
 		return
 	}
 
@@ -93,5 +98,11 @@ func main() {
 	dirPaths := database.ExtractDirsFromPaths(allPaths)
 	for i, dirPath := range dirPaths {
 		fmt.Printf("%d: %s\n", i, dirPath)
+	}
+
+	err = db.BulkInsertRepoDirs(repoRetrieval.Id, dirPaths)
+	if err != nil {
+		fmt.Printf("Error inserting repo directories into database: %v\n", err)
+		return
 	}
 }

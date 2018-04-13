@@ -210,7 +210,7 @@ func (db *DB) prepareStatementsRepoDirs() error {
 	var err error
 
 	err = db.addStatement(stmtRepoDirGet, `
-		SELECT id, repo_id, dir_parent_id, path
+		SELECT id, reporetrieval_id, dir_parent_id, path
 		FROM repodirs
 		WHERE id = $1
 	`)
@@ -219,7 +219,7 @@ func (db *DB) prepareStatementsRepoDirs() error {
 	}
 
 	err = db.addStatement(stmtRepoDirInsert, `
-		INSERT INTO repodirs (repo_id, dir_parent_id, path)
+		INSERT INTO repodirs (reporetrieval_id, dir_parent_id, path)
 		VALUES ($1, $2, $3)
 		RETURNING id
 	`)

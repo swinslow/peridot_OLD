@@ -12,11 +12,11 @@ func (db *DB) createDBRepoDirsTableIfNotExists() error {
 	_, err := db.sqldb.Exec(`
 		CREATE TABLE IF NOT EXISTS repodirs (
 			id SERIAL NOT NULL PRIMARY KEY,
-			repo_id INTEGER NOT NULL,
-			dir_parent_id INTEGER NOT NULL,
+			reporetrieval_id INTEGER NOT NULL,
+			dir_parent_id INTEGER,
 			path TEXT NOT NULL,
-			UNIQUE (id, path),
-			FOREIGN KEY (repo_id) REFERENCES repos (id),
+			UNIQUE (reporetrieval_id, path),
+			FOREIGN KEY (reporetrieval_id) REFERENCES reporetrievals (id),
 			FOREIGN KEY (dir_parent_id) REFERENCES repodirs (id)
 		)
 	`)
@@ -24,10 +24,10 @@ func (db *DB) createDBRepoDirsTableIfNotExists() error {
 }
 
 type RepoDir struct {
-	Id          int
-	RepoId      int
-	DirParentId int
-	Path        string
+	Id              int
+	RepoRetrievalId int
+	DirParentId     int
+	Path            string
 }
 
 func (db *DB) GetRepoDirById(id int) (*RepoDir, error) {
@@ -37,7 +37,7 @@ func (db *DB) GetRepoDirById(id int) (*RepoDir, error) {
 	}
 
 	var repodir RepoDir
-	err = stmt.QueryRow(id).Scan(&repodir.Id, &repodir.RepoId,
+	err = stmt.QueryRow(id).Scan(&repodir.Id, &repodir.RepoRetrievalId,
 		&repodir.DirParentId, &repodir.Path)
 	if err != nil {
 		return nil, err
@@ -72,4 +72,68 @@ func ExtractDirsFromPaths(paths []string) []string {
 	return dirPaths
 }
 
-//func (db *DB) BulkInsertDirs(repoId int, paths []string)
+func (db *DB) BulkInsertRepoDirs(repoRetrievalId int, dirs []string) error {
+	// first, get a transaction and prepare a stmt on it
+	// (we can't use stmts prepared on the main DB from within a Tx)
+	tx, err := db.sqldb.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	insertStmt, err := tx.Prepare(`
+		INSERT INTO repodirs (reporetrieval_id, path)
+		VALUES ($1, $2)
+		RETURNING id
+	`)
+	if err != nil {
+		return err
+	}
+	defer insertStmt.Close()
+
+	// create temp dir holder, mapping paths to dirs
+	repoDirs := make(map[string]*RepoDir)
+
+	var repoDir *RepoDir
+
+	for _, dir := range dirs {
+		var id int
+		err = insertStmt.QueryRow(repoRetrievalId, dir).Scan(&id)
+		if err != nil {
+			return err
+		}
+		repoDir = &RepoDir{Id: id, RepoRetrievalId: repoRetrievalId, Path: dir}
+		repoDirs[dir] = repoDir
+	}
+
+	// go through and fix the dir_parent_id links, first in memory
+	for _, repoDir = range repoDirs {
+		parentPath := filepath.Dir(repoDir.Path)
+		repoDir.DirParentId = repoDirs[parentPath].Id
+	}
+
+	// and then update in the database
+	updateStmt, err := tx.Prepare(`
+		UPDATE repodirs
+		SET dir_parent_id = $1
+		WHERE id = $2
+	`)
+	if err != nil {
+		return err
+	}
+	defer updateStmt.Close()
+
+	for _, repoDir = range repoDirs {
+		_, err = updateStmt.Exec(repoDir.DirParentId, repoDir.Id)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
