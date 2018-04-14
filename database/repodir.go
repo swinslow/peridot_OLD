@@ -46,6 +46,72 @@ func (db *DB) GetRepoDirById(id int) (*RepoDir, error) {
 	return &repodir, nil
 }
 
+func (db *DB) GetRepoDirsForRepoRetrieval(repoRetrievalId int) (map[int]*RepoDir, error) {
+	stmt, err := db.getStatement(stmtRepoDirGetForRepoRetrieval)
+	if err != nil {
+		return nil, err
+	}
+
+	// 20 is arbitrary
+	repoDirs := make(map[int]*RepoDir, 20)
+	rows, err := stmt.Query(repoRetrievalId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		repoDir := &RepoDir{}
+		err := rows.Scan(&repoDir.Id, &repoDir.RepoRetrievalId, &repoDir.DirParentId,
+			&repoDir.Path)
+		if err != nil {
+			return nil, err
+		}
+		repoDirs[repoDir.Id] = repoDir
+	}
+
+	// check at end for error
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return repoDirs, nil
+}
+
+func (db *DB) GetRepoDirsForRepoRetrievalByPath(repoRetrievalId int) (map[string]*RepoDir, error) {
+	stmt, err := db.getStatement(stmtRepoDirGetForRepoRetrieval)
+	if err != nil {
+		return nil, err
+	}
+
+	// 20 is arbitrary
+	repoDirs := make(map[string]*RepoDir, 20)
+	rows, err := stmt.Query(repoRetrievalId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		repoDir := &RepoDir{}
+		err := rows.Scan(&repoDir.Id, &repoDir.RepoRetrievalId, &repoDir.DirParentId,
+			&repoDir.Path)
+		if err != nil {
+			return nil, err
+		}
+		repoDirs[repoDir.Path] = repoDir
+	}
+
+	// check at end for error
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return repoDirs, nil
+}
+
 var exists = struct{}{}
 
 func ExtractDirsFromPaths(paths []string) []string {
@@ -61,6 +127,7 @@ func ExtractDirsFromPaths(paths []string) []string {
 	}
 
 	// now, convert to a list of just the keys
+	// FIXME consider switching to var dirPaths []string and append()'ing
 	dirPaths := make([]string, len(dirs))
 	i := 0
 	for dirPath, _ := range dirs {

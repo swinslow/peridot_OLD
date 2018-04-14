@@ -77,8 +77,10 @@ const (
 	stmtRepoRetrievalInsert
 	stmtRepoRetrievalUpdate
 	stmtRepoFileGet
+	stmtRepoFileGetForRepoRetrieval
 	stmtRepoFileInsert
 	stmtRepoDirGet
+	stmtRepoDirGetForRepoRetrieval
 	stmtRepoDirInsert
 )
 
@@ -183,7 +185,7 @@ func (db *DB) prepareStatementsRepoFiles() error {
 	var err error
 
 	err = db.addStatement(stmtRepoFileGet, `
-		SELECT id, repo_id, dir_parent_id, nextfile_id, prevfile_id,
+		SELECT id, reporetrieval_id, dir_parent_id, nextfile_id, prevfile_id,
 		       path, hash_sha1
 		FROM repofiles
 		WHERE id = $1
@@ -192,8 +194,19 @@ func (db *DB) prepareStatementsRepoFiles() error {
 		return err
 	}
 
+	err = db.addStatement(stmtRepoFileGetForRepoRetrieval, `
+		SELECT id, reporetrieval_id, dir_parent_id, nextfile_id, prevfile_id,
+		       path, hash_sha1
+		FROM repofiles
+		WHERE reporetrieval_id = $1
+		ORDER BY path
+	`)
+	if err != nil {
+		return err
+	}
+
 	err = db.addStatement(stmtRepoFileInsert, `
-		INSERT INTO repofiles (repo_id, dir_parent_id,
+		INSERT INTO repofiles (reporetrieval_id, dir_parent_id,
 			nextfile_id, prevfile_id, path, hash_sha1)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id
@@ -213,6 +226,15 @@ func (db *DB) prepareStatementsRepoDirs() error {
 		SELECT id, reporetrieval_id, dir_parent_id, path
 		FROM repodirs
 		WHERE id = $1
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtRepoDirGetForRepoRetrieval, `
+		SELECT id, reporetrieval_id, dir_parent_id, path
+		FROM repodirs
+		WHERE reporetrieval_id = $1
 	`)
 	if err != nil {
 		return err

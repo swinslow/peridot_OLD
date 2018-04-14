@@ -4,8 +4,10 @@
 package repomanager
 
 import (
+	"crypto/sha1"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -278,12 +280,45 @@ func (rm *RepoManager) GetAllFilepaths(repo *database.Repo) ([]string, error) {
 		return nil, err
 	}
 
-	// walk through files; 50 is arbitrary
-	filePaths := make([]string, 50)
+	// walk through files
+	var filePaths []string
 	tree.Files().ForEach(func(f *gitObject.File) error {
 		filePaths = append(filePaths, f.Name)
 		return nil
 	})
 
 	return filePaths, nil
+}
+
+// returns map of paths to file hashes
+func (rm *RepoManager) GetFileHashes(repo *database.Repo) (map[string]string, error) {
+	allPaths, err := rm.GetAllFilepaths(repo)
+	if err != nil {
+		return nil, err
+	}
+
+	pathsToHashes := make(map[string]string)
+	pathRoot := rm.GetPathToRepo(repo)
+	h := sha1.New()
+
+	for _, path := range allPaths {
+		fullPath := filepath.Join(pathRoot, path)
+		f, err := os.Open(fullPath)
+		if err != nil {
+			return nil, err
+		}
+		// don't defer f.Close() here, b/c we're in a loop
+
+		if _, err := io.Copy(h, f); err != nil {
+			f.Close()
+			return nil, err
+		}
+
+		s := fmt.Sprintf("%x", h.Sum(nil))
+		pathsToHashes[path] = s
+
+		f.Close()
+	}
+
+	return pathsToHashes, nil
 }
