@@ -4,7 +4,7 @@
 package database
 
 import (
-	"errors"
+	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -136,7 +136,7 @@ func (db *DB) BulkInsertRepoFiles(repoRetrievalId int, pathsToHashes map[string]
 		dirParentPath := filepath.Dir(path)
 		dirParent, ok := repoDirs[dirParentPath]
 		if !ok {
-			return errors.New("Couldn't find parent directory object for file " + path)
+			return fmt.Errorf("Couldn't find parent directory object for file %s", path)
 		}
 
 		var id int
@@ -206,8 +206,8 @@ func fillInNextAndPrevRepoFiles(repoFiles map[string]*RepoFile, repoFilePaths []
 			prevPath = repoFilePaths[i-1]
 			prevRepoFile, ok = repoFiles[prevPath]
 			if !ok {
-				return errors.New("No file found when setting previous ID for " +
-					curPath + " (prevPath = " + prevPath + ")")
+				return fmt.Errorf("No file found when setting previous ID for %s (prevPath = %s)",
+					curPath, prevPath)
 			}
 			prevRepoFileId = prevRepoFile.Id
 		}
@@ -220,15 +220,15 @@ func fillInNextAndPrevRepoFiles(repoFiles map[string]*RepoFile, repoFilePaths []
 			nextPath = repoFilePaths[i+1]
 			nextRepoFile, ok = repoFiles[nextPath]
 			if !ok {
-				return errors.New("No file found when setting next ID for " +
-					curPath + " (nextPath = " + nextPath + ")")
+				return fmt.Errorf("No file found when setting next ID for %s (nextPath = %s)",
+					curPath, nextPath)
 			}
 			nextRepoFileId = nextRepoFile.Id
 		}
 
 		curRepoFile, ok = repoFiles[curPath]
 		if !ok {
-			return errors.New("No file found when setting IDs for " + curPath)
+			return fmt.Errorf("No file found when setting IDs for %s", curPath)
 		}
 
 		// and, finally, fill in IDs

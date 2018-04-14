@@ -6,9 +6,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/swinslow/lfscanning/config"
-	"github.com/swinslow/lfscanning/database"
-	"github.com/swinslow/lfscanning/repomanager"
+	"github.com/swinslow/peridot/config"
+	"github.com/swinslow/peridot/database"
+	"github.com/swinslow/peridot/repomanager"
 )
 
 func addNewRepo(db *database.DB, orgName string, repoName string) (*database.Repo, error) {
@@ -22,29 +22,17 @@ func addNewRepo(db *database.DB, orgName string, repoName string) (*database.Rep
 func main() {
 	var err error
 
+	coordinator = &coordinator.Coordinator{}
+
 	cfg := &config.Config{}
 	cfg.SetDBConnectString("steve", "", "lfscanning", false)
 	cfg.ReposLocation = "/home/steve/programming/lftools/lfscanning/repos"
-
-	db := database.InitDB()
-	err = db.PrepareDB(cfg)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	rm := repomanager.InitRepoManager()
-	err = rm.PrepareRepoManager(cfg, db)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
 
 	var repo *database.Repo
 
 	// ===== OPTION 1: add new repo
 
-	repo, err = addNewRepo(db, "swinslow", "testrepo")
+	repo, err = addNewRepo(db, "swinslow", "fabric")
 	if err != nil {
 		fmt.Println(err)
 		return

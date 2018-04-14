@@ -7,7 +7,6 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,8 +17,8 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 	gitObject "gopkg.in/src-d/go-git.v4/plumbing/object"
 
-	"github.com/swinslow/lfscanning/config"
-	"github.com/swinslow/lfscanning/database"
+	"github.com/swinslow/peridot/config"
+	"github.com/swinslow/peridot/database"
 )
 
 type RepoManager struct {
@@ -27,19 +26,15 @@ type RepoManager struct {
 	db        *database.DB
 }
 
-func InitRepoManager() *RepoManager {
-	return &RepoManager{}
-}
-
-func (rm *RepoManager) PrepareRepoManager(cfg *config.Config, db *database.DB) error {
+func (rm *RepoManager) PrepareRM(cfg *config.Config, db *database.DB) error {
 	if rm == nil {
-		return errors.New("must pass non-nil RepoManager")
+		return fmt.Errorf("must pass non-nil RepoManager to PrepareRepoManager")
 	}
 	if cfg == nil || cfg.ReposLocation == "" {
-		return errors.New("must pass config string")
+		return fmt.Errorf("must pass config string to PrepareRepoManager")
 	}
 	if db == nil {
-		return errors.New("must prepare and pass database first")
+		return fmt.Errorf("must prepare and pass database to PrepareRepoManager")
 	}
 
 	err := rm.setReposLocation(cfg.ReposLocation)
@@ -60,12 +55,12 @@ func (rm *RepoManager) setReposLocation(path string) error {
 
 	// check whether path is a directory
 	if !fi.IsDir() {
-		return errors.New(path + " is not a directory")
+		return fmt.Errorf("%s is not a directory", path)
 	}
 
 	// check whether path is writable
 	if unix.Access(path, unix.W_OK) != nil {
-		return errors.New(path + " is not writable")
+		return fmt.Errorf("%s is not writable", path)
 	}
 
 	// we're good

@@ -5,10 +5,10 @@ package database
 
 import (
 	"database/sql"
-	"errors"
+	"fmt"
 	_ "github.com/lib/pq"
 
-	"github.com/swinslow/lfscanning/config"
+	"github.com/swinslow/peridot/config"
 )
 
 type DB struct {
@@ -24,10 +24,10 @@ func InitDB() *DB {
 
 func (db *DB) PrepareDB(cfg *config.Config) error {
 	if db == nil {
-		return errors.New("must pass non-nil DB")
+		return fmt.Errorf("must pass non-nil DB to PrepareDB")
 	}
 	if cfg == nil || cfg.DBConnectString == "" {
-		return errors.New("must pass config string")
+		return fmt.Errorf("must pass config string to PrepareDB")
 	}
 	sqldb, err := sql.Open("postgres", cfg.DBConnectString)
 	if err != nil {

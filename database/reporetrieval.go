@@ -4,7 +4,7 @@
 package database
 
 import (
-	"errors"
+	"fmt"
 	"strconv"
 	"time"
 )
@@ -93,8 +93,8 @@ func (db *DB) UpdateRepoRetrieval(repoRetrieval *RepoRetrieval, lr time.Time, ch
 		return err
 	}
 	if rowCount != 1 {
-		return errors.New("UpdateRepoRetrieval for ID " + strconv.Itoa(repoRetrieval.Id) +
-			" modified " + strconv.FormatInt(rowCount, 10) + " rows, should be 1")
+		return fmt.Errorf("UpdateRepoRetrieval for ID %d modified %d rows, should be 1",
+			strconv.FormatInt(rowCount, 10), strconv.Itoa(repoRetrieval.Id))
 	}
 
 	// update in-memory copy of repo

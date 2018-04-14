@@ -5,7 +5,7 @@ package database
 
 import (
 	"database/sql"
-	"errors"
+	"fmt"
 )
 
 // getStatement is not exported, because we don't want anyone outside
@@ -13,7 +13,8 @@ import (
 // retrieve data
 func (db *DB) getStatement(sv dbStatementVal) (*sql.Stmt, error) {
 	if int(sv) > len(db.stmts) {
-		return nil, errors.New("invalid statement number in getStatement, statement not prepared")
+		return nil, fmt.Errorf("invalid statement number %d > len(db.stmts) (%d) in getStatement, statement not prepared",
+			sv, len(db.stmts))
 	}
 
 	return db.stmts[sv], nil
@@ -21,7 +22,7 @@ func (db *DB) getStatement(sv dbStatementVal) (*sql.Stmt, error) {
 
 func (db *DB) addStatement(sv dbStatementVal, s string) error {
 	if sv < 0 {
-		return errors.New("negative statement number in addStatement")
+		return fmt.Errorf("negative statement number %d in addStatement", sv)
 	}
 
 	stmt, err := db.sqldb.Prepare(s)
