@@ -4,7 +4,9 @@
 package repomanager
 
 import (
+	"crypto/md5"
 	"crypto/sha1"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -290,16 +292,15 @@ func (rm *RepoManager) GetAllFilepaths(repo *database.Repo) ([]string, error) {
 	return filePaths, nil
 }
 
-// returns map of paths to file hashes
-func (rm *RepoManager) GetFileHashes(repo *database.Repo) (map[string]string, error) {
+// returns map of paths to array of file hashes: SHA1, SHA256, MD5
+func (rm *RepoManager) GetFileHashes(repo *database.Repo) (map[string][3]string, error) {
 	allPaths, err := rm.GetAllFilepaths(repo)
 	if err != nil {
 		return nil, err
 	}
 
-	pathsToHashes := make(map[string]string)
+	pathsToHashes := make(map[string][3]string)
 	pathRoot := rm.GetPathToRepo(repo)
-	h := sha1.New()
 
 	for _, path := range allPaths {
 		fullPath := filepath.Join(pathRoot, path)
@@ -309,13 +310,21 @@ func (rm *RepoManager) GetFileHashes(repo *database.Repo) (map[string]string, er
 		}
 		// don't defer f.Close() here, b/c we're in a loop
 
-		if _, err := io.Copy(h, f); err != nil {
+		var hashes [3]string
+		h_sha1 := sha1.New()
+		h_sha256 := sha256.New()
+		h_md5 := md5.New()
+		hMulti := io.MultiWriter(h_sha1, h_sha256, h_md5)
+
+		if _, err := io.Copy(hMulti, f); err != nil {
 			f.Close()
 			return nil, err
 		}
+		hashes[0] = fmt.Sprintf("%x", h_sha1.Sum(nil))
+		hashes[1] = fmt.Sprintf("%x", h_sha256.Sum(nil))
+		hashes[2] = fmt.Sprintf("%x", h_md5.Sum(nil))
 
-		s := fmt.Sprintf("%x", h.Sum(nil))
-		pathsToHashes[path] = s
+		pathsToHashes[path] = hashes
 
 		f.Close()
 	}

@@ -20,6 +20,8 @@ func (db *DB) createDBRepoFilesTableIfNotExists() error {
 			prevfile_id INTEGER,
 			path TEXT NOT NULL,
 			hash_sha1 TEXT NOT NULL,
+			hash_sha256 TEXT NOT NULL,
+			hash_md5 TEXT NOT NULL,
 			FOREIGN KEY (reporetrieval_id) REFERENCES reporetrievals (id),
 			FOREIGN KEY (dir_parent_id) REFERENCES repodirs (id),
 			FOREIGN KEY (nextfile_id) REFERENCES repofiles (id),
@@ -37,6 +39,8 @@ type RepoFile struct {
 	PrevFileId      int
 	Path            string
 	Hash_SHA1       string
+	Hash_SHA256     string
+	Hash_MD5        string
 }
 
 func (db *DB) GetRepoFileById(id int) (*RepoFile, error) {
@@ -48,7 +52,8 @@ func (db *DB) GetRepoFileById(id int) (*RepoFile, error) {
 	var repofile RepoFile
 	err = stmt.QueryRow(id).Scan(&repofile.Id, &repofile.RepoRetrievalId,
 		&repofile.DirParentId, &repofile.NextFileId, &repofile.PrevFileId,
-		&repofile.Path, &repofile.Hash_SHA1)
+		&repofile.Path,
+		&repofile.Hash_SHA1, &repofile.Hash_SHA256, &repofile.Hash_MD5)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +79,8 @@ func (db *DB) GetRepoFilesForRepoRetrieval(repoRetrievalId int) (map[int]*RepoFi
 		repoFile := &RepoFile{}
 		err := rows.Scan(&repoFile.Id, &repoFile.RepoRetrievalId,
 			&repoFile.DirParentId, &repoFile.NextFileId, &repoFile.PrevFileId,
-			&repoFile.Path, &repoFile.Hash_SHA1)
+			&repoFile.Path,
+			&repoFile.Hash_SHA1, &repoFile.Hash_SHA256, &repoFile.Hash_MD5)
 		if err != nil {
 			return nil, err
 		}
@@ -90,7 +96,8 @@ func (db *DB) GetRepoFilesForRepoRetrieval(repoRetrievalId int) (map[int]*RepoFi
 	return repoFiles, nil
 }
 
-func (db *DB) BulkInsertRepoFiles(repoRetrievalId int, pathsToHashes map[string]string) error {
+// call with map of paths to array with hashes: SHA1, SHA256, MD5
+func (db *DB) BulkInsertRepoFiles(repoRetrievalId int, pathsToHashes map[string][3]string) error {
 	// first, get the corresponding repo directories from the database
 	repoDirs, err := db.GetRepoDirsForRepoRetrievalByPath(repoRetrievalId)
 	if err != nil {
@@ -106,8 +113,8 @@ func (db *DB) BulkInsertRepoFiles(repoRetrievalId int, pathsToHashes map[string]
 	defer tx.Rollback()
 
 	insertStmt, err := tx.Prepare(`
-		INSERT INTO repofiles (reporetrieval_id, dir_parent_id, path, hash_sha1)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO repofiles (reporetrieval_id, dir_parent_id, path, hash_sha1, hash_sha256, hash_md5)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id
 	`)
 	if err != nil {
@@ -121,7 +128,11 @@ func (db *DB) BulkInsertRepoFiles(repoRetrievalId int, pathsToHashes map[string]
 	var repoFilePaths []string
 	var repoFile *RepoFile
 
-	for path, hash := range pathsToHashes {
+	for path, hashes := range pathsToHashes {
+		hash_sha1 := hashes[0]
+		hash_sha256 := hashes[1]
+		hash_md5 := hashes[2]
+
 		dirParentPath := filepath.Dir(path)
 		dirParent, ok := repoDirs[dirParentPath]
 		if !ok {
@@ -129,12 +140,14 @@ func (db *DB) BulkInsertRepoFiles(repoRetrievalId int, pathsToHashes map[string]
 		}
 
 		var id int
-		err = insertStmt.QueryRow(repoRetrievalId, dirParent.Id, path, hash).Scan(&id)
+		err = insertStmt.QueryRow(repoRetrievalId, dirParent.Id, path,
+			hash_sha1, hash_sha256, hash_md5).Scan(&id)
 		if err != nil {
 			return err
 		}
 		repoFile = &RepoFile{Id: id, RepoRetrievalId: repoRetrievalId,
-			DirParentId: dirParent.Id, Path: path, Hash_SHA1: hash}
+			DirParentId: dirParent.Id, Path: path,
+			Hash_SHA1: hash_sha1, Hash_SHA256: hash_sha256, Hash_MD5: hash_md5}
 		repoFiles[path] = repoFile
 		repoFilePaths = append(repoFilePaths, path)
 	}

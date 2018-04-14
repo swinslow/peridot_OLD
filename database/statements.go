@@ -186,7 +186,7 @@ func (db *DB) prepareStatementsRepoFiles() error {
 
 	err = db.addStatement(stmtRepoFileGet, `
 		SELECT id, reporetrieval_id, dir_parent_id, nextfile_id, prevfile_id,
-		       path, hash_sha1
+		       path, hash_sha1, hash_sha256, hash_md5
 		FROM repofiles
 		WHERE id = $1
 	`)
@@ -196,7 +196,7 @@ func (db *DB) prepareStatementsRepoFiles() error {
 
 	err = db.addStatement(stmtRepoFileGetForRepoRetrieval, `
 		SELECT id, reporetrieval_id, dir_parent_id, nextfile_id, prevfile_id,
-		       path, hash_sha1
+		       path, hash_sha1, hash_sha256, hash_md5
 		FROM repofiles
 		WHERE reporetrieval_id = $1
 		ORDER BY path
@@ -207,8 +207,8 @@ func (db *DB) prepareStatementsRepoFiles() error {
 
 	err = db.addStatement(stmtRepoFileInsert, `
 		INSERT INTO repofiles (reporetrieval_id, dir_parent_id,
-			nextfile_id, prevfile_id, path, hash_sha1)
-		VALUES ($1, $2, $3, $4, $5, $6)
+			nextfile_id, prevfile_id, path, hash_sha1, hash_sha256, hash_md5)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id
 	`)
 	if err != nil {

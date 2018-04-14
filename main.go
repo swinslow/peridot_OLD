@@ -44,7 +44,7 @@ func main() {
 
 	// ===== OPTION 1: add new repo
 
-	repo, err = addNewRepo(db, "swinslow", "fabric")
+	repo, err = addNewRepo(db, "swinslow", "testrepo")
 	if err != nil {
 		fmt.Println(err)
 		return
