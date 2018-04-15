@@ -3,6 +3,10 @@
 
 package database
 
+import (
+	"database/sql"
+)
+
 func (db *DB) createDBReposTableIfNotExists() error {
 	_, err := db.sqldb.Exec(`
 		CREATE TABLE IF NOT EXISTS repos (
@@ -33,6 +37,26 @@ func (db *DB) GetRepoById(id int) (*Repo, error) {
 	}
 
 	return &repo, nil
+}
+
+// returns 0, nil if repo not found for these coords
+func (db *DB) GetRepoIdFromCoords(orgName string, repoName string) (int, error) {
+	stmt, err := db.getStatement(stmtRepoGetByCoords)
+	if err != nil {
+		return -1, err
+	}
+
+	var id int
+	err = stmt.QueryRow(orgName, repoName).Scan(&id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		} else {
+			return -1, err
+		}
+	}
+
+	return id, nil
 }
 
 func (db *DB) InsertRepo(orgName string, repoName string) (*Repo, error) {

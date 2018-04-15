@@ -72,6 +72,7 @@ type dbStatementVal int
 
 const (
 	stmtRepoGet dbStatementVal = iota
+	stmtRepoGetByCoords
 	stmtRepoInsert
 	stmtRepoRetrievalGet
 	stmtRepoRetrievalGetLatest
@@ -119,6 +120,15 @@ func (db *DB) prepareStatementsRepos() error {
 		SELECT id, org_name, repo_name
 		FROM repos
 		WHERE id = $1
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtRepoGetByCoords, `
+		SELECT id
+		FROM repos
+		WHERE org_name = $1 AND repo_name = $2
 	`)
 	if err != nil {
 		return err

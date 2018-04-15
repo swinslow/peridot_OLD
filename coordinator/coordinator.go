@@ -17,21 +17,20 @@ type Coordinator struct {
 	cfg *config.Config
 }
 
-func (co *Coordinator) Prepare(cfg *config.Config) error {
+func (co *Coordinator) Prepare(cfg *config.Config, db *database.DB) error {
 	var err error
 
 	if co == nil {
 		return fmt.Errorf("must pass non-nil Coordinator to Prepare()")
 	}
-	if cfg == nil || cfg.DBConnectString == "" {
+	if cfg == nil {
 		return fmt.Errorf("must pass config string to Prepare()")
 	}
-
-	co.db = database.InitDB()
-	err = co.db.PrepareDB(cfg)
-	if err != nil {
-		return err
+	if db == nil {
+		return fmt.Errorf("must pass valid database to Prepare()")
 	}
+
+	co.db = db
 
 	co.rm = &repomanager.RepoManager{}
 	err = co.rm.PrepareRM(cfg, co.db)

@@ -115,11 +115,9 @@ func (rm *RepoManager) CloneRepo(repo *database.Repo) error {
 
 	// and insert time and hash for commit
 	// FIXME determine whether we need to do all this or can just use ref.Hash()
-	repoRet, err := rm.db.InsertRepoRetrieval(repo.Id, time.Now(), commit.Hash.String())
+	_, err = rm.db.InsertRepoRetrieval(repo.Id, time.Now(), commit.Hash.String())
 	if err != nil {
 		return err
-	} else {
-		fmt.Printf("Inserted RepoRetrieval %#v\n", repoRet)
 	}
 
 	return nil
