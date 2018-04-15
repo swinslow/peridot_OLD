@@ -44,8 +44,8 @@ func main() {
 	switch command {
 	case "repo":
 		cli.CmdRepo(co, db, cfg)
-	//case "reset":
-	//	cli.CmdReset(co, db, cfg)
+	case "reset":
+		cli.CmdReset(co, db, cfg)
 	default:
 		fmt.Printf("Invalid command %s; available commands:\n")
 		printCommands()
@@ -54,6 +54,6 @@ func main() {
 
 func printCommands() {
 	fmt.Printf("  repo\n")
-	fmt.Printf("  reset (NOT YET IMPLEMENTED)\n")
+	fmt.Printf("  reset\n")
 	fmt.Printf("\n")
 }

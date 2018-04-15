@@ -23,6 +23,10 @@ const (
 
 	// ===== Maintenance =====
 
+	// Reset -- drop all tables
+	// USE CAUTION before calling this!
+	JobReset
+
 	// TO DO: Scan through database, repos and hash manager and check for
 	// inconsistencies
 )

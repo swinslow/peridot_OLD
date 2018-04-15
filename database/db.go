@@ -57,3 +57,16 @@ func (db *DB) PrepareDB(cfg *config.Config) error {
 
 	return nil
 }
+
+func (db *DB) ResetDB() error {
+	// we control the contents of tables, it isn't dependent on user input,
+	// so building the statements this way shouldn't be a problem
+	for _, tablename := range tables {
+		_, err := db.sqldb.Exec("DROP TABLE " + tablename)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

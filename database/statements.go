@@ -8,6 +8,13 @@ import (
 	"fmt"
 )
 
+var tables = []string{
+	"repofiles",
+	"repodirs",
+	"reporetrievals",
+	"repos",
+}
+
 // getStatement is not exported, because we don't want anyone outside
 // the database package touching the database directly, even to
 // retrieve data
