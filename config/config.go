@@ -6,6 +6,7 @@ package config
 type Config struct {
 	DBConnectString string
 	ReposLocation   string
+	HashesLocation  string
 }
 
 func (cfg *Config) SetDBConnectString(

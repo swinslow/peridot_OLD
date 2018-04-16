@@ -8,11 +8,13 @@ import (
 
 	"github.com/swinslow/peridot/config"
 	"github.com/swinslow/peridot/database"
+	"github.com/swinslow/peridot/hashmanager"
 	"github.com/swinslow/peridot/repomanager"
 )
 
 type Coordinator struct {
 	rm  *repomanager.RepoManager
+	hm  *hashmanager.HashManager
 	db  *database.DB
 	cfg *config.Config
 }
@@ -34,6 +36,12 @@ func (co *Coordinator) Prepare(cfg *config.Config, db *database.DB) error {
 
 	co.rm = &repomanager.RepoManager{}
 	err = co.rm.PrepareRM(cfg, co.db)
+	if err != nil {
+		return err
+	}
+
+	co.hm = &hashmanager.HashManager{}
+	err = co.hm.PrepareHM(cfg, co.db)
 	if err != nil {
 		return err
 	}

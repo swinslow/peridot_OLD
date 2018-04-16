@@ -83,10 +83,23 @@ func (co *Coordinator) DoPrepareFiles(repoId int) error {
 		return fmt.Errorf("couldn't get file hashes: %v", err)
 	}
 
-	// add files to DB
+	// add files to DB for this repo
 	err = co.db.BulkInsertRepoFiles(repoRetrieval.Id, pathsToHashes)
 	if err != nil {
 		return fmt.Errorf("couldn't insert repo files into DB: %v", err)
+	}
+
+	// also add files to hashmanager
+	pathRoot := co.rm.GetPathToRepo(repo)
+	copiedPathsToHashes, err := co.hm.CopyAllFilesToHash(pathRoot, pathsToHashes)
+	if err != nil {
+		return fmt.Errorf("couldn't copy files to hashes: %v", err)
+	}
+
+	// and finally add just the newly-copied files as hashfiles to DB
+	err = co.db.BulkInsertHashFiles(copiedPathsToHashes)
+	if err != nil {
+		return fmt.Errorf("couldn't insert hash files into DB: %v", err)
 	}
 
 	return nil

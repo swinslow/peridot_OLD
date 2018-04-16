@@ -28,13 +28,13 @@ type RepoManager struct {
 
 func (rm *RepoManager) PrepareRM(cfg *config.Config, db *database.DB) error {
 	if rm == nil {
-		return fmt.Errorf("must pass non-nil RepoManager to PrepareRepoManager")
+		return fmt.Errorf("must pass non-nil RepoManager")
 	}
 	if cfg == nil || cfg.ReposLocation == "" {
-		return fmt.Errorf("must pass config string to PrepareRepoManager")
+		return fmt.Errorf("must pass config string")
 	}
 	if db == nil {
-		return fmt.Errorf("must prepare and pass database to PrepareRepoManager")
+		return fmt.Errorf("must prepare and pass database")
 	}
 
 	err := rm.setReposLocation(cfg.ReposLocation)

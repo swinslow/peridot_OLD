@@ -71,6 +71,11 @@ func (db *DB) createDBTablesIfNotExists() error {
 		return err
 	}
 
+	err = db.createDBHashFilesTableIfNotExists()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -91,6 +96,9 @@ const (
 	stmtRepoDirGet
 	stmtRepoDirGetForRepoRetrieval
 	stmtRepoDirInsert
+	stmtHashFileGet
+	stmtHashFileGetByHashes
+	stmtHashFileInsert
 )
 
 // master prepare function
@@ -105,11 +113,15 @@ func (db *DB) prepareStatements() error {
 	if err != nil {
 		return err
 	}
+	err = db.prepareStatementsRepoDirs()
+	if err != nil {
+		return err
+	}
 	err = db.prepareStatementsRepoFiles()
 	if err != nil {
 		return err
 	}
-	err = db.prepareStatementsRepoDirs()
+	err = db.prepareStatementsHashFiles()
 	if err != nil {
 		return err
 	}
@@ -199,6 +211,40 @@ func (db *DB) prepareStatementsRepoRetrievals() error {
 }
 
 // table repofiles
+func (db *DB) prepareStatementsRepoDirs() error {
+	var err error
+
+	err = db.addStatement(stmtRepoDirGet, `
+		SELECT id, reporetrieval_id, dir_parent_id, path
+		FROM repodirs
+		WHERE id = $1
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtRepoDirGetForRepoRetrieval, `
+		SELECT id, reporetrieval_id, dir_parent_id, path
+		FROM repodirs
+		WHERE reporetrieval_id = $1
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtRepoDirInsert, `
+		INSERT INTO repodirs (reporetrieval_id, dir_parent_id, path)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// table repofiles
 func (db *DB) prepareStatementsRepoFiles() error {
 	var err error
 
@@ -237,29 +283,29 @@ func (db *DB) prepareStatementsRepoFiles() error {
 }
 
 // table repofiles
-func (db *DB) prepareStatementsRepoDirs() error {
+func (db *DB) prepareStatementsHashFiles() error {
 	var err error
 
-	err = db.addStatement(stmtRepoDirGet, `
-		SELECT id, reporetrieval_id, dir_parent_id, path
-		FROM repodirs
+	err = db.addStatement(stmtHashFileGet, `
+		SELECT id, hash_sha1, hash_sha256, hash_md5
+		FROM hashfiles
 		WHERE id = $1
 	`)
 	if err != nil {
 		return err
 	}
 
-	err = db.addStatement(stmtRepoDirGetForRepoRetrieval, `
-		SELECT id, reporetrieval_id, dir_parent_id, path
-		FROM repodirs
-		WHERE reporetrieval_id = $1
+	err = db.addStatement(stmtHashFileGetByHashes, `
+		SELECT id, hash_sha1, hash_sha256, hash_md5
+		FROM hashfiles
+		WHERE hash_sha1 = $1 AND hash_sha256 = $2
 	`)
 	if err != nil {
 		return err
 	}
 
-	err = db.addStatement(stmtRepoDirInsert, `
-		INSERT INTO repodirs (reporetrieval_id, dir_parent_id, path)
+	err = db.addStatement(stmtHashFileInsert, `
+		INSERT INTO hashfiles (hash_sha1, hash_sha256, hash_md5)
 		VALUES ($1, $2, $3)
 		RETURNING id
 	`)
