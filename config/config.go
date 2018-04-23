@@ -3,12 +3,15 @@
 
 package config
 
+// Config represents data for configuring peridot.
 type Config struct {
 	DBConnectString string
 	ReposLocation   string
 	HashesLocation  string
 }
 
+// SetDBConnectString is called with database config paramters to create the
+// appropriate connection string in its Config object.
 func (cfg *Config) SetDBConnectString(
 	user string, password string,
 	dbname string, ssl bool) {

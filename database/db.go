@@ -6,22 +6,31 @@ package database
 import (
 	"database/sql"
 	"fmt"
+
+	// register pq with database/sql, though we won't need pq directly
 	_ "github.com/lib/pq"
 
 	"github.com/swinslow/peridot/config"
 )
 
+// DB is the main data type for peridot database calls. All SQL calls are
+// intended to occur only within peridot/database/* functions, and only the
+// database package's interfaces are provided to dependent packages.
 type DB struct {
 	sqldb *sql.DB
 	stmts []*sql.Stmt
 }
 
+// InitDB creates, initializes and returns a DB object.
 func InitDB() *DB {
 	var db DB
 	db.stmts = make([]*sql.Stmt, 1)
 	return &db
 }
 
+// PrepareDB sets up for the database specified in the Config object,
+// makes sure we can connect, initializes the database tables if needed
+// and prepares what statements it can.
 func (db *DB) PrepareDB(cfg *config.Config) error {
 	if db == nil {
 		return fmt.Errorf("must pass non-nil DB to PrepareDB")
@@ -58,6 +67,7 @@ func (db *DB) PrepareDB(cfg *config.Config) error {
 	return nil
 }
 
+// ResetDB drops any existing peridot-controlled tables in the DB.
 func (db *DB) ResetDB() error {
 	// we control the contents of tables, it isn't dependent on user input,
 	// so building the statements this way shouldn't be a problem

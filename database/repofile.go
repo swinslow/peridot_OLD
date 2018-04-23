@@ -31,29 +31,33 @@ func (db *DB) createDBRepoFilesTableIfNotExists() error {
 	return err
 }
 
+// RepoFile represents a file within a single retrieval fo a source code
+// repository.
 type RepoFile struct {
-	Id              int
-	RepoRetrievalId int
-	DirParentId     int
-	NextFileId      int
-	PrevFileId      int
+	ID              int
+	RepoRetrievalID int
+	DirParentID     int
+	NextFileID      int
+	PrevFileID      int
 	Path            string
-	Hash_SHA1       string
-	Hash_SHA256     string
-	Hash_MD5        string
+	HashSHA1        string
+	HashSHA256      string
+	HashMD5         string
 }
 
-func (db *DB) GetRepoFileById(id int) (*RepoFile, error) {
+// GetRepoFileByID looks up and returns a RepoFile in the database by its ID.
+// It returns nil if no RepoFile with the requested ID is found.
+func (db *DB) GetRepoFileByID(id int) (*RepoFile, error) {
 	stmt, err := db.getStatement(stmtRepoFileGet)
 	if err != nil {
 		return nil, err
 	}
 
 	var repofile RepoFile
-	err = stmt.QueryRow(id).Scan(&repofile.Id, &repofile.RepoRetrievalId,
-		&repofile.DirParentId, &repofile.NextFileId, &repofile.PrevFileId,
+	err = stmt.QueryRow(id).Scan(&repofile.ID, &repofile.RepoRetrievalID,
+		&repofile.DirParentID, &repofile.NextFileID, &repofile.PrevFileID,
 		&repofile.Path,
-		&repofile.Hash_SHA1, &repofile.Hash_SHA256, &repofile.Hash_MD5)
+		&repofile.HashSHA1, &repofile.HashSHA256, &repofile.HashMD5)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +65,9 @@ func (db *DB) GetRepoFileById(id int) (*RepoFile, error) {
 	return &repofile, nil
 }
 
-func (db *DB) GetRepoFilesForRepoRetrieval(repoRetrievalId int) (map[int]*RepoFile, error) {
+// GetRepoFilesForRepoRetrieval takes the ID of a RepoRetrieval and returns a
+// map of IDs to RepoFiles, for all RepoFiles from that RepoRetrieval.
+func (db *DB) GetRepoFilesForRepoRetrieval(repoRetrievalID int) (map[int]*RepoFile, error) {
 	stmt, err := db.getStatement(stmtRepoFileGetForRepoRetrieval)
 	if err != nil {
 		return nil, err
@@ -69,7 +75,7 @@ func (db *DB) GetRepoFilesForRepoRetrieval(repoRetrievalId int) (map[int]*RepoFi
 
 	// 20 is arbitrary
 	repoFiles := make(map[int]*RepoFile, 20)
-	rows, err := stmt.Query(repoRetrievalId)
+	rows, err := stmt.Query(repoRetrievalID)
 	if err != nil {
 		return nil, err
 	}
@@ -77,14 +83,14 @@ func (db *DB) GetRepoFilesForRepoRetrieval(repoRetrievalId int) (map[int]*RepoFi
 
 	for rows.Next() {
 		repoFile := &RepoFile{}
-		err := rows.Scan(&repoFile.Id, &repoFile.RepoRetrievalId,
-			&repoFile.DirParentId, &repoFile.NextFileId, &repoFile.PrevFileId,
+		err := rows.Scan(&repoFile.ID, &repoFile.RepoRetrievalID,
+			&repoFile.DirParentID, &repoFile.NextFileID, &repoFile.PrevFileID,
 			&repoFile.Path,
-			&repoFile.Hash_SHA1, &repoFile.Hash_SHA256, &repoFile.Hash_MD5)
+			&repoFile.HashSHA1, &repoFile.HashSHA256, &repoFile.HashMD5)
 		if err != nil {
 			return nil, err
 		}
-		repoFiles[repoFile.Id] = repoFile
+		repoFiles[repoFile.ID] = repoFile
 	}
 
 	// check at end for error
@@ -96,10 +102,12 @@ func (db *DB) GetRepoFilesForRepoRetrieval(repoRetrievalId int) (map[int]*RepoFi
 	return repoFiles, nil
 }
 
-// call with map of paths to array with hashes: SHA1, SHA256, MD5
-func (db *DB) BulkInsertRepoFiles(repoRetrievalId int, pathsToHashes map[string][3]string) error {
+// BulkInsertRepoFiles inserts a collection of files into the database,
+// wrapped in a single transaction. It takes a map from a path to a 3-element
+// string array, with SHA1, SHA256 and MD5 hashes in that order.
+func (db *DB) BulkInsertRepoFiles(repoRetrievalID int, pathsToHashes map[string][3]string) error {
 	// first, get the corresponding repo directories from the database
-	repoDirs, err := db.GetRepoDirsForRepoRetrievalByPath(repoRetrievalId)
+	repoDirs, err := db.GetRepoDirsForRepoRetrievalByPath(repoRetrievalID)
 	if err != nil {
 		return err
 	}
@@ -129,9 +137,9 @@ func (db *DB) BulkInsertRepoFiles(repoRetrievalId int, pathsToHashes map[string]
 	var repoFile *RepoFile
 
 	for path, hashes := range pathsToHashes {
-		hash_sha1 := hashes[0]
-		hash_sha256 := hashes[1]
-		hash_md5 := hashes[2]
+		hashSHA1 := hashes[0]
+		hashSHA256 := hashes[1]
+		hashMD5 := hashes[2]
 
 		dirParentPath := filepath.Dir(path)
 		dirParent, ok := repoDirs[dirParentPath]
@@ -140,14 +148,14 @@ func (db *DB) BulkInsertRepoFiles(repoRetrievalId int, pathsToHashes map[string]
 		}
 
 		var id int
-		err = insertStmt.QueryRow(repoRetrievalId, dirParent.Id, path,
-			hash_sha1, hash_sha256, hash_md5).Scan(&id)
+		err = insertStmt.QueryRow(repoRetrievalID, dirParent.ID, path,
+			hashSHA1, hashSHA256, hashMD5).Scan(&id)
 		if err != nil {
 			return err
 		}
-		repoFile = &RepoFile{Id: id, RepoRetrievalId: repoRetrievalId,
-			DirParentId: dirParent.Id, Path: path,
-			Hash_SHA1: hash_sha1, Hash_SHA256: hash_sha256, Hash_MD5: hash_md5}
+		repoFile = &RepoFile{ID: id, RepoRetrievalID: repoRetrievalID,
+			DirParentID: dirParent.ID, Path: path,
+			HashSHA1: hashSHA1, HashSHA256: hashSHA256, HashMD5: hashMD5}
 		repoFiles[path] = repoFile
 		repoFilePaths = append(repoFilePaths, path)
 	}
@@ -169,7 +177,7 @@ func (db *DB) BulkInsertRepoFiles(repoRetrievalId int, pathsToHashes map[string]
 	defer updateStmt.Close()
 
 	for _, repoFile = range repoFiles {
-		_, err = updateStmt.Exec(repoFile.NextFileId, repoFile.PrevFileId, repoFile.Id)
+		_, err = updateStmt.Exec(repoFile.NextFileID, repoFile.PrevFileID, repoFile.ID)
 		if err != nil {
 			return err
 		}
@@ -193,7 +201,7 @@ func fillInNextAndPrevRepoFiles(repoFiles map[string]*RepoFile, repoFilePaths []
 	// go through paths in sorted order, looking up IDs and filling them in
 	var prevRepoFile, curRepoFile, nextRepoFile *RepoFile
 	var prevPath, nextPath string
-	var prevRepoFileId, nextRepoFileId int
+	var prevRepoFileID, nextRepoFileID int
 	var ok bool
 	lenPaths := len(repoFilePaths)
 	for i, curPath := range repoFilePaths {
@@ -201,7 +209,7 @@ func fillInNextAndPrevRepoFiles(repoFiles map[string]*RepoFile, repoFilePaths []
 		if i == 0 {
 			prevPath = ""
 			prevRepoFile = nil
-			prevRepoFileId = 0
+			prevRepoFileID = 0
 		} else {
 			prevPath = repoFilePaths[i-1]
 			prevRepoFile, ok = repoFiles[prevPath]
@@ -209,13 +217,13 @@ func fillInNextAndPrevRepoFiles(repoFiles map[string]*RepoFile, repoFilePaths []
 				return fmt.Errorf("No file found when setting previous ID for %s (prevPath = %s)",
 					curPath, prevPath)
 			}
-			prevRepoFileId = prevRepoFile.Id
+			prevRepoFileID = prevRepoFile.ID
 		}
 
 		if i == (lenPaths - 1) {
 			nextPath = ""
 			nextRepoFile = nil
-			nextRepoFileId = 0
+			nextRepoFileID = 0
 		} else {
 			nextPath = repoFilePaths[i+1]
 			nextRepoFile, ok = repoFiles[nextPath]
@@ -223,7 +231,7 @@ func fillInNextAndPrevRepoFiles(repoFiles map[string]*RepoFile, repoFilePaths []
 				return fmt.Errorf("No file found when setting next ID for %s (nextPath = %s)",
 					curPath, nextPath)
 			}
-			nextRepoFileId = nextRepoFile.Id
+			nextRepoFileID = nextRepoFile.ID
 		}
 
 		curRepoFile, ok = repoFiles[curPath]
@@ -233,15 +241,15 @@ func fillInNextAndPrevRepoFiles(repoFiles map[string]*RepoFile, repoFilePaths []
 
 		// and, finally, fill in IDs
 		// files at beginning / end will point to themselves
-		if prevRepoFileId == 0 {
-			curRepoFile.PrevFileId = curRepoFile.Id
+		if prevRepoFileID == 0 {
+			curRepoFile.PrevFileID = curRepoFile.ID
 		} else {
-			curRepoFile.PrevFileId = prevRepoFileId
+			curRepoFile.PrevFileID = prevRepoFileID
 		}
-		if nextRepoFileId == 0 {
-			curRepoFile.NextFileId = curRepoFile.Id
+		if nextRepoFileID == 0 {
+			curRepoFile.NextFileID = curRepoFile.ID
 		} else {
-			curRepoFile.NextFileId = nextRepoFileId
+			curRepoFile.NextFileID = nextRepoFileID
 		}
 	}
 

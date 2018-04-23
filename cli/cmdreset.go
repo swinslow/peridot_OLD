@@ -11,6 +11,8 @@ import (
 	"github.com/swinslow/peridot/database"
 )
 
+// CmdReset provides the "reset" cli command, which resets (deletes) the
+// peridot DB.
 func CmdReset(co *coordinator.Coordinator, db *database.DB, cfg *config.Config) {
 	err := co.DoReset()
 	if err != nil {

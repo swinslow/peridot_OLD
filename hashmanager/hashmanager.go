@@ -15,11 +15,15 @@ import (
 	"github.com/swinslow/peridot/database"
 )
 
+// HashManager holds the data objects needed to manage copies of files
+// scanned by peridot that are stored on disk by their hash values.
 type HashManager struct {
 	HashesPath string
 	db         *database.DB
 }
 
+// PrepareHM is called with existing Config and Database objects and
+// initializes the hash manager's on-disk storage location.
 func (hm *HashManager) PrepareHM(cfg *config.Config, db *database.DB) error {
 	if hm == nil {
 		return fmt.Errorf("must pass non-nil HashManager")
@@ -62,17 +66,21 @@ func (hm *HashManager) setHashesLocation(path string) error {
 	return nil
 }
 
-func (hm *HashManager) GetPathToHash(h_sha1 string, h_sha256 string, h_md5 string) string {
+// GetPathToHash takes a file's hash values, and returns the full on-disk
+// pathname to locate that file.
+func (hm *HashManager) GetPathToHash(hSHA1 string, hSHA256 string, hMD5 string) string {
 	// uses all three hashes for dirs
 	// uses just SHA1 and SHA256 for filename
-	return filepath.Join(hm.HashesPath, h_sha1[:2], h_sha256[:2], h_md5[:2],
-		fmt.Sprintf("%s.%s", h_sha1, h_sha256))
+	return filepath.Join(hm.HashesPath, hSHA1[:2], hSHA256[:2], hMD5[:2],
+		fmt.Sprintf("%s.%s", hSHA1, hSHA256))
 }
 
-// returns false, nil if file already exists in the hash location
-func (hm *HashManager) CopyFileToHash(srcPath string, h_sha1 string, h_sha256 string, h_md5 string) (bool, error) {
+// CopyFileToHash copies a file into its corresponding on-disk "hash location"
+// based on its hash values. It returns (false, nil) if a file already exists
+// in the hash location.
+func (hm *HashManager) CopyFileToHash(srcPath string, hSHA1 string, hSHA256 string, hMD5 string) (bool, error) {
 	// first check if there's already a file in the dst path
-	dstPath := hm.GetPathToHash(h_sha1, h_sha256, h_md5)
+	dstPath := hm.GetPathToHash(hSHA1, hSHA256, hMD5)
 	_, err := os.Stat(dstPath)
 	if err == nil {
 		// no error from stat means a file exists at dstPath
@@ -116,7 +124,9 @@ func (hm *HashManager) CopyFileToHash(srcPath string, h_sha1 string, h_sha256 st
 	return true, nil
 }
 
-// returns new map of path => array of hashes for just the newly-copied files
+// CopyAllFilesToHash copies each file to its corresponding on-disk "hash
+// location" based on its hash values. It returns a new map of path => array
+// of hashes for only the newly-copied files that weren't already present.
 func (hm *HashManager) CopyAllFilesToHash(pathRoot string, pathsToHashes map[string][3]string) (map[string][3]string, error) {
 	copiedFiles := make(map[string][3]string)
 

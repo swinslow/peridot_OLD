@@ -13,14 +13,16 @@ import (
 )
 
 type repoCallData struct {
-	co *coordinator.Coordinator
-	db *database.DB
-	cfg *config.Config
-	subCmd string
-	orgName string
+	co       *coordinator.Coordinator
+	db       *database.DB
+	cfg      *config.Config
+	subCmd   string
+	orgName  string
 	repoName string
 }
 
+// CmdRepo provides the "repo" cli command, which is used to initialize or update
+// a repo within peridot.
 func CmdRepo(co *coordinator.Coordinator, db *database.DB, cfg *config.Config) {
 	if len(os.Args) < 5 {
 		fmt.Printf("Usage: %s repo SUBCOMMAND orgName repoName\n", os.Args[0])
@@ -50,15 +52,15 @@ func printRepoSubcommands() {
 
 func subcmdRepoInit(rcd *repoCallData) {
 	var err error
-	var repoId int
+	var repoID int
 
 	// first make sure that the repo isn't already in the database
-	repoId, err = rcd.db.GetRepoIdFromCoords(rcd.orgName, rcd.repoName)
+	repoID, err = rcd.db.GetRepoIDFromCoords(rcd.orgName, rcd.repoName)
 	if err != nil {
 		fmt.Printf("Error getting repo ID: %v\n", err)
 		return
 	}
-	if repoId != 0 {
+	if repoID != 0 {
 		fmt.Printf("Error in 'repo init': %s/%s already exists in database\n", rcd.orgName, rcd.repoName)
 		fmt.Printf("Did you mean to call 'repo update' instead?\n")
 		return
@@ -70,7 +72,7 @@ func subcmdRepoInit(rcd *repoCallData) {
 		fmt.Printf("Error adding repo to DB: %v\n", err)
 		return
 	}
-	repoId = repo.Id
+	repoID = repo.Id
 
 	// go clone the repo from remote
 	fmt.Printf("Getting Github repo %s/%s...\n", rcd.orgName, rcd.repoName)
@@ -82,7 +84,7 @@ func subcmdRepoInit(rcd *repoCallData) {
 	fmt.Printf("Cloned repo\n")
 
 	// and prepare the directories and files in the database
-	err = rcd.co.DoPrepareFiles(repoId)
+	err = rcd.co.DoPrepareFiles(repoID)
 	if err != nil {
 		fmt.Printf("Error preparing files: %v\n", err)
 		return
@@ -91,16 +93,16 @@ func subcmdRepoInit(rcd *repoCallData) {
 
 func subcmdRepoUpdate(rcd *repoCallData) {
 	var err error
-	var repoId int
+	var repoID int
 	var needsFilesPrepared bool
 
 	// first make sure that the repo is already in the database
-	repoId, err = rcd.db.GetRepoIdFromCoords(rcd.orgName, rcd.repoName)
+	repoID, err = rcd.db.GetRepoIDFromCoords(rcd.orgName, rcd.repoName)
 	if err != nil {
 		fmt.Printf("Error getting repo ID: %v\n", err)
 		return
 	}
-	if repoId == 0 {
+	if repoID == 0 {
 		fmt.Printf("Error in 'repo update': %s/%s not found in database\n", rcd.orgName, rcd.repoName)
 		fmt.Printf("Did you mean to call 'repo init' instead?\n")
 		return
@@ -108,7 +110,7 @@ func subcmdRepoUpdate(rcd *repoCallData) {
 
 	// repo already exists, so let's update it
 	fmt.Printf("Checking Github repo %s/%s for updates...\n", rcd.orgName, rcd.repoName)
-	needsFilesPrepared, err = rcd.co.DoUpdateRepo(repoId)
+	needsFilesPrepared, err = rcd.co.DoUpdateRepo(repoID)
 	if err != nil {
 		fmt.Printf("Error updating repo: %v\n", err)
 		return
@@ -117,7 +119,7 @@ func subcmdRepoUpdate(rcd *repoCallData) {
 
 	if needsFilesPrepared {
 		fmt.Printf("Updates found, so preparing directories and files\n")
-		err = rcd.co.DoPrepareFiles(repoId)
+		err = rcd.co.DoPrepareFiles(repoID)
 		if err != nil {
 			fmt.Printf("Error preparing files: %v\n", err)
 			return
@@ -126,4 +128,3 @@ func subcmdRepoUpdate(rcd *repoCallData) {
 		fmt.Printf("No updates found\n")
 	}
 }
-

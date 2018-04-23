@@ -9,8 +9,10 @@ import (
 	"github.com/swinslow/peridot/database"
 )
 
-func (co *Coordinator) DoCloneRepo(repoId int) error {
-	repo, err := co.db.GetRepoById(repoId)
+// DoCloneRepo is the function for JobCloneRepo, and performs the first
+// retrieval of files for a new repo.
+func (co *Coordinator) DoCloneRepo(repoID int) error {
+	repo, err := co.db.GetRepoById(repoID)
 	if err != nil {
 		return fmt.Errorf("couldn't get repo data from DB: %v", err)
 	}
@@ -23,14 +25,15 @@ func (co *Coordinator) DoCloneRepo(repoId int) error {
 	return nil
 }
 
-// returns true if an update occurred, false if no changes
-func (co *Coordinator) DoUpdateRepo(repoId int) (bool, error) {
-	repo, err := co.db.GetRepoById(repoId)
+// DoUpdateRepo is the function for JobUpdateRepo, and returns true if
+// an update occurred, or false if there are no changes to the repo.
+func (co *Coordinator) DoUpdateRepo(repoID int) (bool, error) {
+	repo, err := co.db.GetRepoById(repoID)
 	if err != nil {
 		return false, fmt.Errorf("couldn't get repo from DB: %v", err)
 	}
 
-	repoRetBefore, err := co.db.GetRepoRetrievalLatest(repoId)
+	repoRetBefore, err := co.db.GetRepoRetrievalLatest(repoID)
 	if err != nil {
 		return false, fmt.Errorf("couldn't get repo retrieval from DB before update: %v", err)
 	}
@@ -40,7 +43,7 @@ func (co *Coordinator) DoUpdateRepo(repoId int) (bool, error) {
 		return false, fmt.Errorf("couldn't checking remote for updates: %v", err)
 	}
 
-	repoRetAfter, err := co.db.GetRepoRetrievalLatest(repoId)
+	repoRetAfter, err := co.db.GetRepoRetrievalLatest(repoID)
 	if err != nil {
 		return false, fmt.Errorf("couldn't get repo retrieval from DB after update: %v", err)
 	}
@@ -54,13 +57,16 @@ func (co *Coordinator) DoUpdateRepo(repoId int) (bool, error) {
 	return true, nil
 }
 
-func (co *Coordinator) DoPrepareFiles(repoId int) error {
-	repo, err := co.db.GetRepoById(repoId)
+// DoPrepareFiles is the function for JobPrepareFiles, and is called after a
+// JobCloneRepo or JobUpdateRepo to set up the files in the repo and hash
+// managers.
+func (co *Coordinator) DoPrepareFiles(repoID int) error {
+	repo, err := co.db.GetRepoById(repoID)
 	if err != nil {
 		return fmt.Errorf("couldn't get repo from DB: %v", err)
 	}
 
-	repoRetrieval, err := co.db.GetRepoRetrievalLatest(repoId)
+	repoRetrieval, err := co.db.GetRepoRetrievalLatest(repoID)
 	if err != nil {
 		return fmt.Errorf("couldn't get repo retrieval from DB: %v", err)
 	}

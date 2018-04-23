@@ -21,11 +21,15 @@ import (
 	"github.com/swinslow/peridot/database"
 )
 
+// RepoManager holds the data objects needed to manage copies of files
+// scanned by peridot that are stored on disk in git-managed repos.
 type RepoManager struct {
 	ReposPath string
 	db        *database.DB
 }
 
+// PrepareRM is called with existing Config and Database objects and
+// initializes the repo manager's on-disk storage location.
 func (rm *RepoManager) PrepareRM(cfg *config.Config, db *database.DB) error {
 	if rm == nil {
 		return fmt.Errorf("must pass non-nil RepoManager")
@@ -68,10 +72,14 @@ func (rm *RepoManager) setReposLocation(path string) error {
 	return nil
 }
 
+// GetPathToRepo takes a repo structure and returns the full on-disk
+// pathname to locate that repo.
 func (rm *RepoManager) GetPathToRepo(repo *database.Repo) string {
 	return filepath.Join(rm.ReposPath, repo.OrgName, repo.RepoName)
 }
 
+// GetURLToRepo takes a repo structure and returns the full URL for where
+// that repo can be found.
 func (rm *RepoManager) GetURLToRepo(repo *database.Repo) string {
 	// FIXME check for e.g. no slashes or problematic chars in OrgName or RepoName!
 	// FIXME perhaps use path.Join, except not clear yet how to use it with two slashes
@@ -79,6 +87,9 @@ func (rm *RepoManager) GetURLToRepo(repo *database.Repo) string {
 	return "https://github.com/" + repo.OrgName + "/" + repo.RepoName + ".git"
 }
 
+// CloneRepo takes a Repo that is already in the database, and makes an
+// initial clone of its contents onto disk, creating and adding a first
+// RepoRetrieval to the database.
 func (rm *RepoManager) CloneRepo(repo *database.Repo) error {
 	dstPath := rm.GetPathToRepo(repo)
 	srcURL := rm.GetURLToRepo(repo)
@@ -123,6 +134,8 @@ func (rm *RepoManager) CloneRepo(repo *database.Repo) error {
 	return nil
 }
 
+// GetRepoLatestCommit takes a Repo and returns a reference to the most recent
+// git commit on disk for that repo.
 func (rm *RepoManager) GetRepoLatestCommit(repo *database.Repo) (*gitObject.Commit, error) {
 	repoPath := rm.GetPathToRepo(repo)
 	r, err := git.PlainOpen(repoPath)
@@ -155,6 +168,12 @@ func (rm *RepoManager) GetRepoLatestCommit(repo *database.Repo) (*gitObject.Comm
 	return commit, nil
 }
 
+// UpdateRepo takes a Repo that has already been cloned to disk previously
+// via CloneRepo, and checks with the remote origin to see if there are any
+// newer updates. If there are, it retrieves them and creates a new
+// RepoRetrieval in the database. If there aren't, it updates the most
+// recent RepoRetrieval in the database to flag that it is still current as
+// of the present time.
 func (rm *RepoManager) UpdateRepo(repo *database.Repo) error {
 	repoPath := rm.GetPathToRepo(repo)
 	r, err := git.PlainOpen(repoPath)
@@ -211,6 +230,10 @@ func (rm *RepoManager) UpdateRepo(repo *database.Repo) error {
 	return err
 }
 
+// WalkAndPrintFiles is a testing / convenience function that walks through a
+// repo and prints each corresponding file object in that repo. If a file's
+// path matches the path parameter, it will be highlighted with an arrow
+// prefix in the output.
 func (rm *RepoManager) WalkAndPrintFiles(repo *database.Repo, path string) error {
 	repoPath := rm.GetPathToRepo(repo)
 	r, err := git.PlainOpen(repoPath)
@@ -248,6 +271,8 @@ func (rm *RepoManager) WalkAndPrintFiles(repo *database.Repo, path string) error
 	return nil
 }
 
+// GetAllFilepaths takes a Repo and returns a string slice containing the
+// paths for all files in that repo as currently found on disk.
 func (rm *RepoManager) GetAllFilepaths(repo *database.Repo) ([]string, error) {
 	// FIXME would this be more efficient if it went through the filesystem
 	// FIXME directly, via path/filepath.Walk()?
@@ -285,7 +310,9 @@ func (rm *RepoManager) GetAllFilepaths(repo *database.Repo) ([]string, error) {
 	return filePaths, nil
 }
 
-// returns map of paths to array of file hashes: SHA1, SHA256, MD5
+// GetFileHashes takes a Repo and returns a map of strings from path (for
+// all files in that repo as currently found on disk) to a 3-element string
+// array, with that file's hashes in order: SHA1, SHA256, MD5.
 func (rm *RepoManager) GetFileHashes(repo *database.Repo) (map[string][3]string, error) {
 	allPaths, err := rm.GetAllFilepaths(repo)
 	if err != nil {
@@ -304,18 +331,18 @@ func (rm *RepoManager) GetFileHashes(repo *database.Repo) (map[string][3]string,
 		// don't defer f.Close() here, b/c we're in a loop
 
 		var hashes [3]string
-		h_sha1 := sha1.New()
-		h_sha256 := sha256.New()
-		h_md5 := md5.New()
-		hMulti := io.MultiWriter(h_sha1, h_sha256, h_md5)
+		hSHA1 := sha1.New()
+		hSHA256 := sha256.New()
+		hMD5 := md5.New()
+		hMulti := io.MultiWriter(hSHA1, hSHA256, hMD5)
 
 		if _, err := io.Copy(hMulti, f); err != nil {
 			f.Close()
 			return nil, err
 		}
-		hashes[0] = fmt.Sprintf("%x", h_sha1.Sum(nil))
-		hashes[1] = fmt.Sprintf("%x", h_sha256.Sum(nil))
-		hashes[2] = fmt.Sprintf("%x", h_md5.Sum(nil))
+		hashes[0] = fmt.Sprintf("%x", hSHA1.Sum(nil))
+		hashes[1] = fmt.Sprintf("%x", hSHA256.Sum(nil))
+		hashes[2] = fmt.Sprintf("%x", hMD5.Sum(nil))
 
 		pathsToHashes[path] = hashes
 

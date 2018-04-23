@@ -12,6 +12,8 @@ import (
 	"github.com/swinslow/peridot/repomanager"
 )
 
+// Coordinator holds the data objects used to manage various of
+// peridot's activities.
 type Coordinator struct {
 	rm  *repomanager.RepoManager
 	hm  *hashmanager.HashManager
@@ -19,6 +21,8 @@ type Coordinator struct {
 	cfg *config.Config
 }
 
+// Prepare is called with existing Config and Database objects and creates the
+// other maanger objects for the Coordinator.
 func (co *Coordinator) Prepare(cfg *config.Config, db *database.DB) error {
 	var err error
 

@@ -17,7 +17,7 @@ var tables = []string{
 
 // getStatement is not exported, because we don't want anyone outside
 // the database package touching the database directly, even to
-// retrieve data
+// retrieve data.
 func (db *DB) getStatement(sv dbStatementVal) (*sql.Stmt, error) {
 	if int(sv) > len(db.stmts) {
 		return nil, fmt.Errorf("invalid statement number %d > len(db.stmts) (%d) in getStatement, statement not prepared",

@@ -20,7 +20,7 @@ func main() {
 
 	cfg := &config.Config{}
 	cfg.SetDBConnectString("steve", "", "peridot", false)
-	cfg.ReposLocation =  "/Users/steve/programming/scanning/peridot-repos"
+	cfg.ReposLocation = "/Users/steve/programming/scanning/peridot-repos"
 	cfg.HashesLocation = "/Users/steve/programming/scanning/peridot-hashes"
 
 	db := database.InitDB()

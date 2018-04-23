@@ -3,28 +3,32 @@
 
 package coordinator
 
+// JobType represents a job that gets called for a Coordinator.
 type JobType int
 
 const (
-	// No-op
+	// JobNop signifies a no-op job
 	JobNop JobType = iota
 
 	// ===== Repo Management =====
 
-	// First retrieval (clone) of files for a new repo
+	// JobCloneRepo signifies a job for the first retrieval (clone) of files
+	// for a new repo
 	JobCloneRepo
 
-	// Update an existing, previously-cloned repo
+	// JobUpdateRepo signifies a job to update an existing, previously-cloned
+	// repo
 	JobUpdateRepo
 
-	// After a first clone or later update, add the directories and files
-	// to the database and hash manager
+	// JobPrepareFiles signifies a job that gets called after a first clone
+	// or a later update, to add the directories and files to the database
+	// and hash manager
 	JobPrepareFiles
 
 	// ===== Maintenance =====
 
-	// Reset -- drop all tables
-	// USE CAUTION before calling this!
+	// JobReset signifies a job that is called to partially reset peridot by
+	// dropping all DB tables; USE CAUTION before calling this!
 	JobReset
 
 	// TO DO: Scan through database, repos and hash manager and check for
