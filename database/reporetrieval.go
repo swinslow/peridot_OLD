@@ -105,7 +105,7 @@ func (db *DB) UpdateRepoRetrieval(repoRetrieval *RepoRetrieval, lr time.Time, ch
 		return err
 	}
 	if rowCount != 1 {
-		return fmt.Errorf("UpdateRepoRetrieval for ID %d modified %d rows, should be 1",
+		return fmt.Errorf("UpdateRepoRetrieval for ID %s modified %s rows, should be 1",
 			strconv.FormatInt(rowCount, 10), strconv.Itoa(repoRetrieval.ID))
 	}
 
