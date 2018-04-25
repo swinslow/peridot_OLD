@@ -5,9 +5,10 @@ package config
 
 // Config represents data for configuring peridot.
 type Config struct {
-	DBConnectString string
-	ReposLocation   string
-	HashesLocation  string
+	DBConnectString    string
+	ReposLocation      string
+	HashesLocation     string
+	SPDXLLJSONLocation string
 }
 
 // SetDBConnectString is called with database config paramters to create the

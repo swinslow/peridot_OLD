@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 // SPDXLicense represents data about a single license from the
@@ -17,7 +18,7 @@ type SPDXLicense struct {
 	DetailsURL      string `json:"detailsUrl"`
 	ReferenceNumber int    `json:"referenceNumber"`
 	Name            string `json:"name"`
-	Identifier      string `json:"identifier"`
+	Identifier      string `json:"licenseId"`
 	IsOSIApproved   bool   `json:"isOsiApproved"`
 }
 
@@ -29,9 +30,10 @@ type SPDXLicenseList struct {
 	ReleaseDate        string        `json:"releaseDate"`
 }
 
-// LoadFromJSON takes a path to an SPDX License List Data JSON file
+// LoadFromJSON takes a path to an SPDX License List Data JSON directory
 // and returns, if successful, an SPDXLicenseList containing its data.
-func LoadFromJSON(fpath string) (*SPDXLicenseList, error) {
+func LoadFromJSON(spdxLLJSONLocation string) (*SPDXLicenseList, error) {
+	fpath := filepath.Join(spdxLLJSONLocation, "licenses.json")
 	f, err := os.Open(fpath)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open license list file: %v", err)

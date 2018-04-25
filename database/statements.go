@@ -8,10 +8,15 @@ import (
 	"fmt"
 )
 
+// Note that the order is important, so that DBReset() can drop tables
+// in the correct order (e.g., dependent tables dropped before those
+// they depend upon).
 var tables = []string{
+	"hashfiles",
 	"repofiles",
 	"repodirs",
 	"reporetrievals",
+	"licenseleafs",
 	"repos",
 }
 
@@ -56,6 +61,11 @@ func (db *DB) createDBTablesIfNotExists() error {
 		return err
 	}
 
+	err = db.createDBLicenseLeafsTableIfNotExists()
+	if err != nil {
+		return err
+	}
+
 	err = db.createDBRepoRetrievalsTableIfNotExists()
 	if err != nil {
 		return err
@@ -86,6 +96,10 @@ const (
 	stmtRepoGet dbStatementVal = iota
 	stmtRepoGetByCoords
 	stmtRepoInsert
+	stmtLicenseLeafGetByID
+	stmtLicenseLeafGetByIdentifier
+	stmtLicenseLeafSearchByName
+	stmtLicenseLeafInsert
 	stmtRepoRetrievalGet
 	stmtRepoRetrievalGetLatest
 	stmtRepoRetrievalInsert
@@ -106,6 +120,10 @@ func (db *DB) prepareStatements() error {
 	var err error
 
 	err = db.prepareStatementsRepos()
+	if err != nil {
+		return err
+	}
+	err = db.prepareStatementsLicenseLeafs()
 	if err != nil {
 		return err
 	}
@@ -165,6 +183,49 @@ func (db *DB) prepareStatementsRepos() error {
 	return nil
 }
 
+// table licenseleafs
+func (db *DB) prepareStatementsLicenseLeafs() error {
+	var err error
+
+	err = db.addStatement(stmtLicenseLeafGetByID, `
+		SELECT id, identifier, name, is_spdx, type
+		FROM licenseleafs
+		WHERE id = $1
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtLicenseLeafGetByIdentifier, `
+		SELECT id, identifier, name, is_spdx, type
+		FROM licenseleafs
+		WHERE identifier = $1
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtLicenseLeafSearchByName, `
+		SELECT id, identifier, name, is_spdx, type
+		FROM licenseleafs
+		WHERE name LIKE '%$1%'
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtLicenseLeafInsert, `
+		INSERT INTO licenseleafs (identifier, name, is_spdx, type)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id
+	`)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // table reporetrievals
 func (db *DB) prepareStatementsRepoRetrievals() error {
 	var err error
@@ -210,7 +271,7 @@ func (db *DB) prepareStatementsRepoRetrievals() error {
 	return nil
 }
 
-// table repofiles
+// table repodirs
 func (db *DB) prepareStatementsRepoDirs() error {
 	var err error
 
@@ -282,7 +343,7 @@ func (db *DB) prepareStatementsRepoFiles() error {
 	return nil
 }
 
-// table repofiles
+// table hashfiles
 func (db *DB) prepareStatementsHashFiles() error {
 	var err error
 

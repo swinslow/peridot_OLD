@@ -50,5 +50,10 @@ func (co *Coordinator) Prepare(cfg *config.Config, db *database.DB) error {
 		return err
 	}
 
+	err = co.db.InsertFromLicenseList(cfg.SPDXLLJSONLocation)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

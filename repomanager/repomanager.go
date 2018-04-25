@@ -126,7 +126,7 @@ func (rm *RepoManager) CloneRepo(repo *database.Repo) error {
 
 	// and insert time and hash for commit
 	// FIXME determine whether we need to do all this or can just use ref.Hash()
-	_, err = rm.db.InsertRepoRetrieval(repo.Id, time.Now(), commit.Hash.String())
+	_, err = rm.db.InsertRepoRetrieval(repo.ID, time.Now(), commit.Hash.String())
 	if err != nil {
 		return err
 	}
@@ -218,10 +218,10 @@ func (rm *RepoManager) UpdateRepo(repo *database.Repo) error {
 
 	// get the most current RepoRetrieval so we can decide whether to
 	// update it (if commit is the same) or to insert a new one (otherwise)
-	repoRet, err := rm.db.GetRepoRetrievalLatest(repo.Id)
+	repoRet, err := rm.db.GetRepoRetrievalLatest(repo.ID)
 	commitHash := commit.Hash.String()
 	if err != nil || commitHash != repoRet.CommitHash {
-		_, err = rm.db.InsertRepoRetrieval(repo.Id, time.Now(), commitHash)
+		_, err = rm.db.InsertRepoRetrieval(repo.ID, time.Now(), commitHash)
 	} else {
 		err = rm.db.UpdateRepoRetrieval(repoRet, time.Now(), commitHash)
 	}

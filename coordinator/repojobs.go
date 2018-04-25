@@ -12,7 +12,7 @@ import (
 // DoCloneRepo is the function for JobCloneRepo, and performs the first
 // retrieval of files for a new repo.
 func (co *Coordinator) DoCloneRepo(repoID int) error {
-	repo, err := co.db.GetRepoById(repoID)
+	repo, err := co.db.GetRepoByID(repoID)
 	if err != nil {
 		return fmt.Errorf("couldn't get repo data from DB: %v", err)
 	}
@@ -28,7 +28,7 @@ func (co *Coordinator) DoCloneRepo(repoID int) error {
 // DoUpdateRepo is the function for JobUpdateRepo, and returns true if
 // an update occurred, or false if there are no changes to the repo.
 func (co *Coordinator) DoUpdateRepo(repoID int) (bool, error) {
-	repo, err := co.db.GetRepoById(repoID)
+	repo, err := co.db.GetRepoByID(repoID)
 	if err != nil {
 		return false, fmt.Errorf("couldn't get repo from DB: %v", err)
 	}
@@ -48,7 +48,7 @@ func (co *Coordinator) DoUpdateRepo(repoID int) (bool, error) {
 		return false, fmt.Errorf("couldn't get repo retrieval from DB after update: %v", err)
 	}
 
-	if repoRetBefore.Id == repoRetAfter.Id {
+	if repoRetBefore.ID == repoRetAfter.ID {
 		// no update occurred
 		return false, nil
 	}
@@ -61,7 +61,7 @@ func (co *Coordinator) DoUpdateRepo(repoID int) (bool, error) {
 // JobCloneRepo or JobUpdateRepo to set up the files in the repo and hash
 // managers.
 func (co *Coordinator) DoPrepareFiles(repoID int) error {
-	repo, err := co.db.GetRepoById(repoID)
+	repo, err := co.db.GetRepoByID(repoID)
 	if err != nil {
 		return fmt.Errorf("couldn't get repo from DB: %v", err)
 	}
@@ -79,7 +79,7 @@ func (co *Coordinator) DoPrepareFiles(repoID int) error {
 	dirPaths := database.ExtractDirsFromPaths(allPaths)
 
 	// split and add directories to DB
-	err = co.db.BulkInsertRepoDirs(repoRetrieval.Id, dirPaths)
+	err = co.db.BulkInsertRepoDirs(repoRetrieval.ID, dirPaths)
 	if err != nil {
 		return fmt.Errorf("couldn't insert repo directories into DB: %v", err)
 	}
@@ -90,7 +90,7 @@ func (co *Coordinator) DoPrepareFiles(repoID int) error {
 	}
 
 	// add files to DB for this repo
-	err = co.db.BulkInsertRepoFiles(repoRetrieval.Id, pathsToHashes)
+	err = co.db.BulkInsertRepoFiles(repoRetrieval.ID, pathsToHashes)
 	if err != nil {
 		return fmt.Errorf("couldn't insert repo files into DB: %v", err)
 	}

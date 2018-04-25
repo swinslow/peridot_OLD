@@ -22,6 +22,7 @@ func main() {
 	cfg.SetDBConnectString("steve", "", "peridot", false)
 	cfg.ReposLocation = "/Users/steve/programming/scanning/peridot-repos"
 	cfg.HashesLocation = "/Users/steve/programming/scanning/peridot-hashes"
+	cfg.SPDXLLJSONLocation = "/Users/steve/programming/GitHub/license-list-data/json"
 
 	db := database.InitDB()
 	err = db.PrepareDB(cfg)
@@ -48,7 +49,7 @@ func main() {
 	case "reset":
 		cli.CmdReset(co, db, cfg)
 	default:
-		fmt.Printf("Invalid command %s; available commands:\n")
+		fmt.Printf("Invalid command %s; available commands:\n", command)
 		printCommands()
 	}
 }
