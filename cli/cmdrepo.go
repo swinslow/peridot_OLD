@@ -38,6 +38,8 @@ func CmdRepo(co *coordinator.Coordinator, db *database.DB, cfg *config.Config) {
 		subcmdRepoInit(rcd)
 	case "update":
 		subcmdRepoUpdate(rcd)
+	case "info":
+		subcmdRepoInfo(rcd)
 	default:
 		printRepoSubcommands()
 	}
@@ -72,11 +74,11 @@ func subcmdRepoInit(rcd *repoCallData) {
 		fmt.Printf("Error adding repo to DB: %v\n", err)
 		return
 	}
-	repoID = repo.Id
+	repoID = repo.ID
 
 	// go clone the repo from remote
 	fmt.Printf("Getting Github repo %s/%s...\n", rcd.orgName, rcd.repoName)
-	err = rcd.co.DoCloneRepo(repo.Id)
+	err = rcd.co.DoCloneRepo(repo.ID)
 	if err != nil {
 		fmt.Printf("Error cloning repo: %v\n", err)
 		return
@@ -127,4 +129,38 @@ func subcmdRepoUpdate(rcd *repoCallData) {
 	} else {
 		fmt.Printf("No updates found\n")
 	}
+}
+
+func subcmdRepoInfo(rcd *repoCallData) {
+	var err error
+	var repoID int
+
+	// first see whether the repo is in the database
+	repoID, err = rcd.db.GetRepoIDFromCoords(rcd.orgName, rcd.repoName)
+	if err != nil {
+		fmt.Printf("Error getting repo ID: %v\n", err)
+		return
+	}
+	if repoID == 0 {
+		fmt.Printf("%s/%s not found in database\n", rcd.orgName, rcd.repoName)
+		return
+	}
+
+	// repo exists, display status and info
+	repo, err := rcd.db.GetRepoByID(repoID)
+	if err != nil {
+		fmt.Printf("Error getting repo: %v\n", err)
+		return
+	}
+
+	repoRetrieval, err := rcd.db.GetRepoRetrievalLatest(repoID)
+	if err != nil {
+		fmt.Printf("Error getting latest repo retrieval: %v\n", err)
+		return
+	}
+
+	fmt.Printf("Info for repo %s/%s:\n", rcd.orgName, rcd.repoName)
+	fmt.Printf("  Repo ID: %d\n", repo.ID)
+	fmt.Printf("  Last retrieved: %v\n", repoRetrieval.LastRetrieval)
+	fmt.Printf("  Latest commit hash: %s\n", repoRetrieval.CommitHash)
 }
