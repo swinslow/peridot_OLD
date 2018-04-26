@@ -127,3 +127,46 @@ func TestNormalizeWithConjunctions(t *testing.T) {
 	}
 
 }
+
+func TestConvertNodeTreeToStrings(t *testing.T) {
+	var lNode *licenseNode
+	var expr string
+	var err error
+
+	lNode = &licenseNode{nodeType: "IDENTIFIER", identifier: "MIT"}
+	expr, err = getExpressionFromNodeTree(lNode)
+	if err != nil || expr != "MIT" {
+		t.Errorf(`getExpressionFromNodeTree(%v) = %s`, lNode, expr)
+		t.Errorf(`plain identifier should be brought down directly`)
+	}
+
+	lNode = &licenseNode{nodeType: "IDENTIFIER", identifier: "EPL-1.0", plus: true}
+	expr, err = getExpressionFromNodeTree(lNode)
+	if err != nil || expr != "EPL-1.0+" {
+		t.Errorf(`getExpressionFromNodeTree(%v) = %s`, lNode, expr)
+		t.Errorf(`+ suffix should be added when plain identifier has plus=true`)
+	}
+
+	lNode = &licenseNode{nodeType: "AND"}
+	lNode.leftChild = &licenseNode{nodeType: "IDENTIFIER", identifier: "MIT"}
+	lNode.rightChild = &licenseNode{nodeType: "IDENTIFIER", identifier: "Apache-2.0"}
+	// NOTE that this is intentionally not normalized since it is only testing the
+	// string output functionality. The licenseNode tree is not in normalized order;
+	// Apache-2.0 should be the leftChild and MIT the rightChild.
+	expr, err = getExpressionFromNodeTree(lNode)
+	if err != nil || expr != "MIT AND Apache-2.0" {
+		t.Errorf(`getExpressionFromNodeTree(%v) = %s`, lNode, expr)
+	}
+
+	lNode = &licenseNode{nodeType: "AND"}
+	lNode.leftChild = &licenseNode{nodeType: "IDENTIFIER", identifier: "MIT"}
+	lNode.rightChild = &licenseNode{nodeType: "OR"}
+	lNode.rightChild.leftChild = &licenseNode{nodeType: "IDENTIFIER", identifier: "BSD-2-Clause"}
+	lNode.rightChild.rightChild = &licenseNode{nodeType: "IDENTIFIER", identifier: "GPL-2.0-or-later"}
+	// NOTE that this is intentionally not normalized
+	expr, err = getExpressionFromNodeTree(lNode)
+	if err != nil || expr != "MIT AND (BSD-2-Clause OR GPL-2.0-or-later)" {
+		t.Errorf(`getExpressionFromNodeTree(%v) = %s`, lNode, expr)
+	}
+
+}

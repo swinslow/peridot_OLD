@@ -97,3 +97,75 @@ func getTokens(expression string) ([]exprToken, error) {
 
 	return exprTokens, nil
 }
+
+type licenseNode struct {
+	nodeType   string
+	identifier string
+	plus       bool
+	parent     *licenseNode
+	leftChild  *licenseNode
+	rightChild *licenseNode
+}
+
+func getExpressionFromNodeTree(nodeTreeParent *licenseNode) (string, error) {
+	output, err := getExpressionFromNodeTreeHelper(nodeTreeParent)
+	if err != nil {
+		return "", err
+	}
+
+	// check for, and remove if present, outermost parens
+	if output[:1] == "(" {
+		return output[1 : len(output)-1], nil
+	}
+
+	return output, nil
+}
+
+func getExpressionFromNodeTreeHelper(nodeTreeParent *licenseNode) (string, error) {
+	switch nodeTreeParent.nodeType {
+	case "IDENTIFIER":
+		if nodeTreeParent.plus {
+			return nodeTreeParent.identifier + "+", nil
+		}
+		return nodeTreeParent.identifier, nil
+	case "AND":
+		leftResult, err := getExpressionFromNodeTreeHelper(nodeTreeParent.leftChild)
+		if err != nil {
+			return "", fmt.Errorf("error getting left child from AND: %v", err)
+		}
+		rightResult, err := getExpressionFromNodeTreeHelper(nodeTreeParent.rightChild)
+		if err != nil {
+			return "", fmt.Errorf("error getting right child from AND: %v", err)
+		}
+
+		return "(" + leftResult + " AND " + rightResult + ")", nil
+	case "OR":
+		leftResult, err := getExpressionFromNodeTreeHelper(nodeTreeParent.leftChild)
+		if err != nil {
+			return "", fmt.Errorf("error getting left child from OR: %v", err)
+		}
+		rightResult, err := getExpressionFromNodeTreeHelper(nodeTreeParent.rightChild)
+		if err != nil {
+			return "", fmt.Errorf("error getting right child from OR: %v", err)
+		}
+
+		return "(" + leftResult + " OR " + rightResult + ")", nil
+	case "WITH":
+		leftResult, err := getExpressionFromNodeTreeHelper(nodeTreeParent.leftChild)
+		if err != nil {
+			return "", fmt.Errorf("error getting left child from WITH: %v", err)
+		}
+		rightResult, err := getExpressionFromNodeTreeHelper(nodeTreeParent.rightChild)
+		if err != nil {
+			return "", fmt.Errorf("error getting right child from WITH: %v", err)
+		}
+
+		return "(" + leftResult + " WITH " + rightResult + ")", nil
+	}
+
+	return "", fmt.Errorf("error getting expression with invalid nodeType: %v", nodeTreeParent.nodeType)
+}
+
+// func parseTokens(exprTokens []exprToken) (*licenseNode, error) {
+
+// }
