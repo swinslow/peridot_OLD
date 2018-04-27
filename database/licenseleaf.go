@@ -5,6 +5,7 @@ package database
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/swinslow/peridot/licenses"
 )
@@ -133,6 +134,41 @@ func (db *DB) InsertFromLicenseList(spdxLLJSONLocation string) error {
 	}
 
 	return nil
+}
+
+func extractAllIdentifiers(identifiers map[string]struct{}, node *licenses.ParsedLicenseNode) map[string]struct{} {
+	if node == nil {
+		return identifiers
+	}
+	if node.NodeType == licenses.NodeIdentifier {
+		identifiers[node.Identifier] = exists
+	}
+	identifiers = extractAllIdentifiers(identifiers, node.LeftChild)
+	identifiers = extractAllIdentifiers(identifiers, node.RightChild)
+	return identifiers
+}
+
+// GetLeafsToAdd takes a pointer to a ParsedLicenseNode, and returns a
+// (possibly empty) slice of strings for license identifiers that don't
+// exist in the database, and would need to be added as new LicenseLeafs
+// in order for its expression to be represented in the database.
+func (db *DB) GetLeafsToAdd(parentNode *licenses.ParsedLicenseNode) ([]string, error) {
+	identifiers := make(map[string]struct{})
+	identifiers = extractAllIdentifiers(identifiers, parentNode)
+
+	var newIdentifiers []string
+	for identifier := range identifiers {
+		ll, err := db.GetLicenseLeafByIdentifier(identifier)
+		if err != nil {
+			return nil, fmt.Errorf("error checking for new license identifiers to add to database: %v", err)
+		}
+		if ll == nil {
+			newIdentifiers = append(newIdentifiers, identifier)
+		}
+	}
+
+	sort.Strings(newIdentifiers)
+	return newIdentifiers, nil
 }
 
 // func (ll *LicenseLeaf) IsValidLeaf() (bool, error) {

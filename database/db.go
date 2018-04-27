@@ -13,6 +13,8 @@ import (
 	"github.com/swinslow/peridot/config"
 )
 
+var exists = struct{}{}
+
 // DB is the main data type for peridot database calls. All SQL calls are
 // intended to occur only within peridot/database/* functions, and only the
 // database package's interfaces are provided to dependent packages.

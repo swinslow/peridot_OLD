@@ -120,8 +120,6 @@ func (db *DB) GetRepoDirsForRepoRetrievalByPath(repoRetrievalID int) (map[string
 	return repoDirs, nil
 }
 
-var exists = struct{}{}
-
 // ExtractDirsFromPaths takes a slice of paths, and returns a slice of
 // directory paths that recursively includes all parent folders.
 func ExtractDirsFromPaths(paths []string) []string {
