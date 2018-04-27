@@ -170,3 +170,91 @@ func TestConvertNodeTreeToStrings(t *testing.T) {
 	}
 
 }
+
+func compareTrees(t1 *licenseNode, t2 *licenseNode) bool {
+	if t1 == nil && t2 == nil {
+		return true
+	}
+	if t1 == nil || t2 == nil {
+		// one, but not both, are nil, so fail
+		return false
+	}
+	return t1.nodeType == t2.nodeType &&
+		t1.identifier == t2.identifier &&
+		t1.plus == t2.plus &&
+		compareTrees(t1.leftChild, t2.leftChild) &&
+		compareTrees(t1.rightChild, t2.rightChild)
+}
+
+func parseAndCompare(t *testing.T, expr string, t2 *licenseNode) {
+	exprTokens, err := getTokens(expr)
+	if err != nil {
+		t.Errorf("error getting tokens for %s: %v", expr, err)
+		return
+	}
+
+	t1, err := parseTokens(exprTokens)
+	if err != nil {
+		t.Errorf("error parsing tokens for %v: %v", exprTokens, err)
+		return
+	}
+
+	if !compareTrees(t1, t2) {
+		t.Errorf("tree for %s (%v) does not match test tree (%v)", expr,
+			getNodeTreeString(t1), getNodeTreeString(t2))
+		return
+	}
+}
+
+func TestConvertTokensToNodeTree(t *testing.T) {
+	var nodeTree *licenseNode
+
+	// single identifier
+	nodeTree = &licenseNode{nodeType: "IDENTIFIER", identifier: "MIT"}
+	parseAndCompare(t, "MIT", nodeTree)
+
+	// parens around single identifier
+	nodeTree = &licenseNode{nodeType: "IDENTIFIER", identifier: "BSD-2-Clause"}
+	parseAndCompare(t, "(BSD-2-Clause)", nodeTree)
+
+	// single identifier with plus
+	nodeTree = &licenseNode{nodeType: "IDENTIFIER", identifier: "MPL-2.0", plus: true}
+	parseAndCompare(t, "MPL-2.0+", nodeTree)
+
+	// basic complex expression
+	nodeTree = &licenseNode{nodeType: "AND",
+		leftChild:  &licenseNode{nodeType: "IDENTIFIER", identifier: "MIT"},
+		rightChild: &licenseNode{nodeType: "IDENTIFIER", identifier: "Apache-2.0"}}
+	parseAndCompare(t, "MIT AND Apache-2.0", nodeTree)
+
+	// basic complex expression with plus
+	nodeTree = &licenseNode{nodeType: "AND",
+		leftChild:  &licenseNode{nodeType: "IDENTIFIER", identifier: "EPL-1.0", plus: true},
+		rightChild: &licenseNode{nodeType: "IDENTIFIER", identifier: "Apache-2.0"}}
+	parseAndCompare(t, "EPL-1.0+ AND Apache-2.0", nodeTree)
+
+	// basic complex expression with parens
+	nodeTree = &licenseNode{nodeType: "AND",
+		leftChild:  &licenseNode{nodeType: "IDENTIFIER", identifier: "MIT"},
+		rightChild: &licenseNode{nodeType: "IDENTIFIER", identifier: "Apache-2.0"}}
+	parseAndCompare(t, "(MIT AND Apache-2.0)", nodeTree)
+
+	// more complex expression with parens
+	nodeTree = &licenseNode{nodeType: "OR",
+		leftChild: &licenseNode{nodeType: "IDENTIFIER", identifier: "MIT"},
+		rightChild: &licenseNode{nodeType: "AND",
+			leftChild:  &licenseNode{nodeType: "IDENTIFIER", identifier: "GPL-3.0-or-later"},
+			rightChild: &licenseNode{nodeType: "IDENTIFIER", identifier: "Apache-2.0"}}}
+	parseAndCompare(t, "MIT OR (GPL-3.0-or-later AND Apache-2.0)", nodeTree)
+
+	// multi-level complex expression with parens
+	nodeTree = &licenseNode{nodeType: "AND",
+		leftChild: &licenseNode{nodeType: "IDENTIFIER", identifier: "MIT"},
+		rightChild: &licenseNode{nodeType: "AND",
+			leftChild: &licenseNode{nodeType: "OR",
+				leftChild:  &licenseNode{nodeType: "IDENTIFIER", identifier: "Zlib"},
+				rightChild: &licenseNode{nodeType: "IDENTIFIER", identifier: "X11"}},
+			rightChild: &licenseNode{nodeType: "IDENTIFIER", identifier: "Apache-2.0"}}}
+	parseAndCompare(t, "MIT AND (Zlib OR X11) AND Apache-2.0", nodeTree)
+
+}
