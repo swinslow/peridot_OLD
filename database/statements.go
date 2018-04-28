@@ -16,6 +16,7 @@ var tables = []string{
 	"repofiles",
 	"repodirs",
 	"reporetrievals",
+	"licensenodes",
 	"licenseleafs",
 	"repos",
 }
@@ -66,6 +67,11 @@ func (db *DB) createDBTablesIfNotExists() error {
 		return err
 	}
 
+	err = db.createDBLicenseNodesTableIfNotExists()
+	if err != nil {
+		return err
+	}
+
 	err = db.createDBRepoRetrievalsTableIfNotExists()
 	if err != nil {
 		return err
@@ -96,10 +102,19 @@ const (
 	stmtRepoGet dbStatementVal = iota
 	stmtRepoGetByCoords
 	stmtRepoInsert
+	stmtLicenseLeafGetAll
 	stmtLicenseLeafGetByID
 	stmtLicenseLeafGetByIdentifier
 	stmtLicenseLeafSearchByName
 	stmtLicenseLeafInsert
+	stmtLicenseNodeGetAll
+	stmtLicenseNodeGetByID
+	stmtLicenseNodeGetAndByContents
+	stmtLicenseNodeGetOrByContents
+	stmtLicenseNodeGetWithByContents
+	stmtLicenseNodeGetPlusByContents
+	stmtLicenseNodeGetLeafByContents
+	stmtLicenseNodeInsert
 	stmtRepoRetrievalGet
 	stmtRepoRetrievalGetLatest
 	stmtRepoRetrievalInsert
@@ -124,6 +139,10 @@ func (db *DB) prepareStatements() error {
 		return err
 	}
 	err = db.prepareStatementsLicenseLeafs()
+	if err != nil {
+		return err
+	}
+	err = db.prepareStatementsLicenseNodes()
 	if err != nil {
 		return err
 	}
@@ -187,6 +206,14 @@ func (db *DB) prepareStatementsRepos() error {
 func (db *DB) prepareStatementsLicenseLeafs() error {
 	var err error
 
+	err = db.addStatement(stmtLicenseLeafGetAll, `
+		SELECT id, identifier, name, is_spdx, type
+		FROM licenseleafs
+	`)
+	if err != nil {
+		return err
+	}
+
 	err = db.addStatement(stmtLicenseLeafGetByID, `
 		SELECT id, identifier, name, is_spdx, type
 		FROM licenseleafs
@@ -216,6 +243,84 @@ func (db *DB) prepareStatementsLicenseLeafs() error {
 
 	err = db.addStatement(stmtLicenseLeafInsert, `
 		INSERT INTO licenseleafs (identifier, name, is_spdx, type)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id
+	`)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// table licensenodes
+func (db *DB) prepareStatementsLicenseNodes() error {
+	var err error
+
+	err = db.addStatement(stmtLicenseNodeGetAll, `
+		SELECT id, type, left_id, right_id, leaf_id
+		FROM licensenodes
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtLicenseNodeGetByID, `
+		SELECT id, type, left_id, right_id, leaf_id
+		FROM licensenodes
+		WHERE id = $1
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtLicenseNodeGetAndByContents, `
+		SELECT id, type, left_id, right_id, leaf_id
+		FROM licensenodes
+		WHERE type = 2 AND left_id = $1 AND right_id = $2
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtLicenseNodeGetOrByContents, `
+		SELECT id, type, left_id, right_id, leaf_id
+		FROM licensenodes
+		WHERE type = 3 AND left_id = $1 AND right_id = $2
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtLicenseNodeGetWithByContents, `
+		SELECT id, type, left_id, right_id, leaf_id
+		FROM licensenodes
+		WHERE type = 4 AND left_id = $1 AND right_id = $2
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtLicenseNodeGetPlusByContents, `
+		SELECT id, type, left_id, right_id, leaf_id
+		FROM licensenodes
+		WHERE type = 5 AND left_id = $1
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtLicenseNodeGetLeafByContents, `
+		SELECT id, type, left_id, right_id, leaf_id
+		FROM licensenodes
+		WHERE type = 1 AND leaf_id = $1
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = db.addStatement(stmtLicenseNodeInsert, `
+		INSERT INTO licensenodes (type, left_id, right_id, leaf_id)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id
 	`)

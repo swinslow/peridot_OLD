@@ -5,11 +5,13 @@ package licenses
 
 import "fmt"
 
-type parsedLicenseNodeType int
+// ParsedLicenseNodeType represents the various types of license nodes
+// that can be obtained from parsing an SPDX license expression.
+type ParsedLicenseNodeType int
 
 const (
 	// NodeIdentifier indicates a node with a single license identifier
-	NodeIdentifier parsedLicenseNodeType = iota
+	NodeIdentifier ParsedLicenseNodeType = iota
 
 	// NodeAnd indicates a node that is the "AND" of two subexpressions
 	NodeAnd
@@ -24,18 +26,35 @@ const (
 	// NodePlus indicates a node that has a NodeIdentifier node as its left
 	// child (nil as right), interpreted as "this version or later"
 	NodePlus
+
+	// NodeError indicates an invalid node type or other error
+	NodeError
 )
 
 // ParsedLicenseNode is the externally-visible representation for the contents
 // of a parsed SPDX license expression node tree.
 type ParsedLicenseNode struct {
-	NodeType   parsedLicenseNodeType
-	Identifier string
+	NodeType   ParsedLicenseNodeType
+	Expression string
 	LeftChild  *ParsedLicenseNode
 	RightChild *ParsedLicenseNode
 }
 
+func isConjunction(nt ParsedLicenseNodeType) bool {
+	return nt == NodeAnd || nt == NodeOr || nt == NodeWith
+}
+
+func getChildExpression(pln *ParsedLicenseNode) string {
+	if isConjunction(pln.NodeType) {
+		return "(" + pln.Expression + ")"
+	}
+
+	return pln.Expression
+}
+
 func convertNodeTreeToPLN(nodeTree *licenseNode) (*ParsedLicenseNode, error) {
+	var leftExpr, rightExpr string
+
 	if nodeTree == nil {
 		return nil, nil
 	}
@@ -44,43 +63,75 @@ func convertNodeTreeToPLN(nodeTree *licenseNode) (*ParsedLicenseNode, error) {
 	case "IDENTIFIER":
 		if nodeTree.plus == true {
 			// create a Plus node with an ID node as its left child
-			child := &ParsedLicenseNode{NodeType: NodeIdentifier, Identifier: nodeTree.identifier}
-			return &ParsedLicenseNode{NodeType: NodePlus, LeftChild: child}, nil
+			child := &ParsedLicenseNode{
+				NodeType:   NodeIdentifier,
+				Expression: nodeTree.identifier}
+
+			return &ParsedLicenseNode{
+				NodeType:   NodePlus,
+				Expression: nodeTree.identifier + "+",
+				LeftChild:  child}, nil
 		}
-		return &ParsedLicenseNode{NodeType: NodeIdentifier, Identifier: nodeTree.identifier}, nil
+		return &ParsedLicenseNode{
+			NodeType:   NodeIdentifier,
+			Expression: nodeTree.identifier}, nil
 
 	case "AND":
 		leftChild, err := convertNodeTreeToPLN(nodeTree.leftChild)
 		if err != nil {
 			return nil, err
 		}
+		leftExpr = getChildExpression(leftChild)
+
 		rightChild, err := convertNodeTreeToPLN(nodeTree.rightChild)
 		if err != nil {
 			return nil, err
 		}
-		return &ParsedLicenseNode{NodeType: NodeAnd, LeftChild: leftChild, RightChild: rightChild}, nil
+		rightExpr = getChildExpression(rightChild)
+
+		return &ParsedLicenseNode{
+			NodeType:   NodeAnd,
+			Expression: leftExpr + " AND " + rightExpr,
+			LeftChild:  leftChild,
+			RightChild: rightChild}, nil
 
 	case "OR":
 		leftChild, err := convertNodeTreeToPLN(nodeTree.leftChild)
 		if err != nil {
 			return nil, err
 		}
+		leftExpr = getChildExpression(leftChild)
+
 		rightChild, err := convertNodeTreeToPLN(nodeTree.rightChild)
 		if err != nil {
 			return nil, err
 		}
-		return &ParsedLicenseNode{NodeType: NodeOr, LeftChild: leftChild, RightChild: rightChild}, nil
+		rightExpr = getChildExpression(rightChild)
+
+		return &ParsedLicenseNode{
+			NodeType:   NodeOr,
+			Expression: leftExpr + " OR " + rightExpr,
+			LeftChild:  leftChild,
+			RightChild: rightChild}, nil
 
 	case "WITH":
 		leftChild, err := convertNodeTreeToPLN(nodeTree.leftChild)
 		if err != nil {
 			return nil, err
 		}
+		leftExpr = getChildExpression(leftChild)
+
 		rightChild, err := convertNodeTreeToPLN(nodeTree.rightChild)
 		if err != nil {
 			return nil, err
 		}
-		return &ParsedLicenseNode{NodeType: NodeWith, LeftChild: leftChild, RightChild: rightChild}, nil
+		rightExpr = getChildExpression(rightChild)
+
+		return &ParsedLicenseNode{
+			NodeType:   NodeWith,
+			Expression: leftExpr + " WITH " + rightExpr,
+			LeftChild:  leftChild,
+			RightChild: rightChild}, nil
 
 	}
 

@@ -4,6 +4,7 @@
 package database
 
 import (
+	"database/sql"
 	"fmt"
 	"sort"
 
@@ -20,7 +21,23 @@ func (db *DB) createDBLicenseLeafsTableIfNotExists() error {
 			type INTEGER NOT NULL
 		)
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// check for zero row and add if not present
+	var tmp int
+	err = db.sqldb.QueryRow(`SELECT id FROM licenseleafs WHERE id=0`).Scan(&tmp)
+
+	switch {
+	case err == sql.ErrNoRows:
+		_, err := db.sqldb.Exec(`INSERT INTO licenseleafs (id, identifier, name, is_spdx, type) VALUES (0, 'N/A', 'N/A', 0, 0)`)
+		return err
+	case err != nil:
+		return err
+	default:
+		return nil
+	}
 }
 
 // LicenseLeaf represents a single, simple SPDX-formatted license name.
@@ -35,6 +52,39 @@ type LicenseLeaf struct {
 	Name       string
 	IsSPDX     bool
 	Type       int
+}
+
+// GetLicenseLeafAll looks up and returns a map of IDs to LicenseLeafs for
+// all LicenseLeafs in the database.
+func (db *DB) GetLicenseLeafAll() (map[int]*LicenseLeaf, error) {
+	stmt, err := db.getStatement(stmtLicenseLeafGetAll)
+	if err != nil {
+		return nil, err
+	}
+
+	lls := make(map[int]*LicenseLeaf)
+	rows, err := stmt.Query()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		ll := &LicenseLeaf{}
+		err = rows.Scan(&ll.ID, &ll.Identifier, &ll.Name, &ll.IsSPDX, &ll.Type)
+		if err != nil {
+			return nil, err
+		}
+		lls[ll.ID] = ll
+	}
+
+	// check at end for error
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return lls, nil
 }
 
 // GetLicenseLeafByID looks up and returns a LicenseLeaf in the database by
@@ -115,7 +165,6 @@ func (db *DB) InsertFromLicenseList(spdxLLJSONLocation string) error {
 	}
 
 	lics := ll.Licenses
-	fmt.Printf("Got lics: %d\n", len(lics))
 	for _, lic := range lics {
 		// check if already present
 		_, err := db.GetLicenseLeafByIdentifier(lic.Identifier)
@@ -141,7 +190,7 @@ func extractAllIdentifiers(identifiers map[string]struct{}, node *licenses.Parse
 		return identifiers
 	}
 	if node.NodeType == licenses.NodeIdentifier {
-		identifiers[node.Identifier] = exists
+		identifiers[node.Expression] = exists
 	}
 	identifiers = extractAllIdentifiers(identifiers, node.LeftChild)
 	identifiers = extractAllIdentifiers(identifiers, node.RightChild)
